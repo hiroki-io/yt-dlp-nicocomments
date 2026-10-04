@@ -50,7 +50,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk ffmpeg
       - name: Install FFmpeg
         if: runner.os == 'macOS'
-        run: brew install ffmpeg
+        run: |
+          brew install ffmpeg-full
+          echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
       - name: Install fonts and FFmpeg
         if: runner.os == 'Windows'
         shell: pwsh
