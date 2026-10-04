@@ -1,0 +1,40 @@
+name: End-to-end
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Niconico video URL
+        default: https://www.nicovideo.jp/watch/sm9
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  download:
+    name: Download and check the subtitle track
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install fonts and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk ffmpeg
+      - name: Download a video with comments
+        env:
+          URL: ${{ inputs.url }}
+        run: |
+          uv run --locked yt-dlp --embed-subs --use-postprocessor "NicoComments:when=video" -o "video.%(ext)s" "$URL"
+      - name: Check the comment subtitle track
+        run: |
+          ffprobe -v error -select_streams s -show_entries stream=codec_name:stream_disposition=default \
+            -of csv=p=0 video.mkv | tee streams.txt
+          grep -qx "ass,1" streams.txt
