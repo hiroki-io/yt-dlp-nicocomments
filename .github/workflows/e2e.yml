@@ -1,11 +1,22 @@
 name: End-to-end
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - yt_dlp_plugins/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/e2e.yml
+  pull_request:
+    paths:
+      - yt_dlp_plugins/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/e2e.yml
+  schedule:
+    - cron: "47 3 * * 1"
   workflow_dispatch:
-    inputs:
-      url:
-        description: Niconico video URL
-        default: https://www.nicovideo.jp/watch/sm9
 
 permissions:
   contents: read
@@ -28,10 +39,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends fonts-noto-cjk ffmpeg
       - name: Download a video with comments
-        env:
-          URL: ${{ inputs.url }}
         run: |
-          uv run --locked yt-dlp --embed-subs --use-postprocessor "NicoComments:when=video" -o "video.%(ext)s" "$URL"
+          uv run --locked yt-dlp --embed-subs --use-postprocessor "NicoComments:when=video" -o "video.%(ext)s" https://www.nicovideo.jp/watch/sm9
       - name: Check the comment subtitle track
         run: |
           ffprobe -v error -select_streams s -show_entries stream=codec_name:stream_disposition=default \
