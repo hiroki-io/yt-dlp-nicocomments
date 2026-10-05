@@ -63,11 +63,13 @@ jobs:
         run: |
           brew install ffmpeg-full
           echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
-      - name: Install fonts and FFmpeg
+      - name: Install fonts
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Add-WindowsCapability -Online -Name "Language.Fonts.Jpan~~~und-JPAN~0.0.1.0"
-          Add-WindowsCapability -Online -Name "Language.Fonts.Hans~~~und-HANS~0.0.1.0"
-          choco install ffmpeg -y --no-progress
+        run: >-
+          dism /Online /NoRestart /Add-Capability
+          /CapabilityName:Language.Fonts.Jpan~~~und-JPAN~0.0.1.0
+          /CapabilityName:Language.Fonts.Hans~~~und-HANS~0.0.1.0
+      - name: Install FFmpeg
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
       - run: uv run --locked pytest
