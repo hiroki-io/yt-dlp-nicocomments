@@ -31,20 +31,6 @@ def test_ng_score_does_not_hide_owner_comments():
     assert not is_hidden(chat(fork="owner", score=-100000), NG_SCORE_THRESHOLDS["high"])
 
 
-@pytest.mark.parametrize("body", ["@デフォルト", "\uff20置換 a b", " @逆", "/script"])
-def test_owner_script_comments_are_hidden(body):
-    assert is_hidden(chat(body=body, fork="owner"), None)
-
-
-@pytest.mark.parametrize("body", ["text @5", " /script"])
-def test_other_owner_comments_are_shown(body):
-    assert not is_hidden(chat(body=body, fork="owner"), None)
-
-
-def test_viewer_comments_that_start_with_at_are_shown():
-    assert not is_hidden(chat(body="@デフォルト"), None)
-
-
 def test_visible_chats_removes_hidden_comments():
     chats = [chat(body="shown"), chat(body="low score", score=-5000)]
     assert [chat.lines for chat in visible_chats(chats, NG_SCORE_THRESHOLDS["middle"])] == [["shown"]]

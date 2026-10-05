@@ -1,3 +1,4 @@
+import math
 import random
 
 import pytest
@@ -106,3 +107,22 @@ def test_line_baselines_are_one_line_height_apart(fixed_width_chains):
     assert slot.y < first < slot.y + slot.height
     assert second - first == pytest.approx(slot.line_height)
     assert third - second == pytest.approx(slot.line_height)
+
+
+def test_reversed_comment_moves_from_left_to_right(fixed_width_chains):
+    stage = make_stage(fixed_width_chains)
+    (slot,) = stage.run_layer([chat()], [(0, 60000)])
+    assert slot.reversed
+    assert slot.screen_x_at(slot.start_ms) == pytest.approx(slot.target_x)
+    assert slot.screen_x_at(slot.end_ms) == pytest.approx(slot.initial_x)
+
+
+def test_reverse_toggle_stages_the_visible_comments_again(fixed_width_chains):
+    stage = make_stage(fixed_width_chains)
+    first, second, again = stage.run_layer(
+        [chat(vpos_ms=10000, body="comment" * 5, no=1), chat(vpos_ms=12000, no=2)], [(14500, 60000)]
+    )
+    toggle = math.ceil(14500 / (1000 / 60)) * (1000 / 60)
+    assert second.y == pytest.approx(first.height)
+    assert (second.hidden_ms, second.reversed) == (pytest.approx(toggle), False)
+    assert (again.chat.no, again.shown_ms, again.reversed, again.y) == (2, pytest.approx(toggle), True, 0)

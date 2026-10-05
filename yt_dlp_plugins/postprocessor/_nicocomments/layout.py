@@ -78,6 +78,7 @@ class Slot:
     y: float = 0.0
     shown_ms: float = 0.0
     hidden_ms: float = 0.0
+    reversed: bool = False
     _line_widths: dict = field(default_factory=dict, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -125,6 +126,12 @@ class Slot:
         if self.end_ms == self.start_ms:
             return self.initial_x
         return self.initial_x + (self.target_x - self.initial_x) * (t - self.start_ms) / (self.end_ms - self.start_ms)
+
+    def screen_x_at(self, t: float) -> float:
+        # The official player uses the reversed position only for drawing, not for collision checks.
+        if self.reversed:
+            return self.initial_x + self.target_x - self.x_at(t)
+        return self.x_at(t)
 
 
 @dataclass
@@ -261,18 +268,26 @@ class Stage:
             or new.x_at(other.end_ms) <= other.target_x + other.width
         )
 
-    def run_layer(self, chats: list[Chat]) -> list[Slot]:
+    def run_layer(
+        self,
+        chats: list[Chat],
+        reverse_ranges: list[tuple[float, float]] = (),
+        refresh_frames: list[float] = (),
+    ) -> list[Slot]:
         timed_chats = sorted(
             ((chat_timing(chat, self.content_length_ms), chat) for chat in chats),
             key=lambda item: (item[0].staging_ms, item[1].no),
         )
+        toggles = dict(reverse_toggle_frames(reverse_ranges))
+        refreshes = sorted({*toggles, *refresh_frames})
         staged: list[Slot] = []
         result: list[Slot] = []
-        for timing, chat in timed_chats:
-            frame = next_frame_ms(max(0.0, timing.staging_ms))
-            if frame >= timing.hidden_ms:
-                continue
+        reversed_moving = False
+
+        def stage(timing: Timing, chat: Chat, frame: float) -> None:
+            nonlocal staged
             slot = self.make_slot(chat, timing)
+            slot.reversed = reversed_moving
             staged = [s for s in staged if next_frame_ms(s.hidden_ms) >= frame]
             if len(staged) >= SLOT_COUNT:
                 evicted = staged.pop(0)
@@ -281,4 +296,41 @@ class Stage:
             slot.shown_ms = frame
             staged.append(slot)
             result.append(slot)
+
+        def refresh(frame: float, earlier: list[tuple[Timing, Chat]]) -> None:
+            # The official player removes all comments of every layer and stages the visible ones again.
+            nonlocal staged
+            for slot in staged:
+                slot.hidden_ms = min(slot.hidden_ms, frame)
+            staged = []
+            for timing, chat in earlier:
+                if next_frame_ms(max(0.0, timing.staging_ms)) <= frame < timing.hidden_ms:
+                    stage(timing, chat, frame)
+
+        def refresh_until(frame: float, earlier: list[tuple[Timing, Chat]]) -> None:
+            nonlocal reversed_moving
+            while refreshes and refreshes[0] <= frame:
+                refresh_frame = refreshes.pop(0)
+                reversed_moving = toggles.get(refresh_frame, reversed_moving)
+                refresh(refresh_frame, earlier)
+
+        for i, (timing, chat) in enumerate(timed_chats):
+            frame = next_frame_ms(max(0.0, timing.staging_ms))
+            refresh_until(frame, timed_chats[:i])
+            if frame >= timing.hidden_ms:
+                continue
+            stage(timing, chat, frame)
+        refresh_until(math.inf, timed_chats)
         return result
+
+
+def reverse_toggle_frames(ranges: list[tuple[float, float]]) -> list[tuple[float, bool]]:
+    frames = sorted({next_frame_ms(max(0.0, t)) for start, end in ranges for t in (start, end) if math.isfinite(t)})
+    toggles = []
+    current = False
+    for frame in frames:
+        active = any(start <= frame < end for start, end in ranges)
+        if active != current:
+            toggles.append((frame, active))
+            current = active
+    return toggles

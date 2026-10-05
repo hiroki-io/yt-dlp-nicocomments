@@ -1,4 +1,6 @@
-from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat
+import pytest
+
+from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat, allowed_commands, is_script_body
 
 
 def chat(body="comment", commands=(), fork="owner", premium=True):
@@ -39,12 +41,9 @@ def test_parse_ignores_at_commands_of_viewer_comments():
     assert chat(commands=["@5"], fork="owner").at_seconds == 5.0
 
 
-def test_parse_ignores_premium_colors_of_non_premium_users():
-    assert chat(commands=["red2", "blue"], premium=False).color == "0000FF"
-    assert chat(commands=["#00ff00", "blue"], premium=False).color == "0000FF"
-    assert chat(commands=["Red2"], premium=False).color == "FFFFFF"
-    assert chat(commands=["red2"], premium=True).color == "CC0033"
-    assert chat(commands=["#00ff00"], premium=True).color == "00FF00"
+def test_allowed_commands_drop_premium_colors_of_non_premium_users():
+    assert allowed_commands({"commands": ["red2", "Blue", "#00ff00", "big"]}) == ["Blue", "big"]
+    assert allowed_commands({"commands": ["Red2", "#00FF00"], "isPremium": True}) == ["Red2", "#00FF00"]
 
 
 def test_parse_splits_lines_and_replaces_tabs():
@@ -54,3 +53,18 @@ def test_parse_splits_lines_and_replaces_tabs():
 def test_parse_ignores_at_commands_that_are_not_positive():
     assert chat(commands=["@0"]).at_seconds is None
     assert chat(commands=["@0", "@5"]).at_seconds == 5.0
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ("@デフォルト", True),
+        ("\uff20置換 a b", True),
+        (" @逆", True),
+        ("/script", True),
+        ("text @5", False),
+        (" /script", False),
+    ],
+)
+def test_is_script_body(body, expected):
+    assert is_script_body(body) == expected

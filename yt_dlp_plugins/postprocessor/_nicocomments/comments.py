@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 VIEW_TIME_MS = 3000
 POSITIONS = ("ue", "naka", "shita")
@@ -42,6 +42,17 @@ AT_COMMAND = re.compile(r"@(\d+(?:\.\d+)?)")
 LINE_BREAK = re.compile(r"\r\n|\r|\n")
 
 
+def allowed_commands(raw: dict) -> list[str]:
+    commands = raw.get("commands") or []
+    if raw.get("isPremium"):
+        return list(commands)
+    return [c for c in commands if not (c.lower() in PREMIUM_COLORS or COLOR_CODE.fullmatch(c.lower()))]
+
+
+def is_script_body(body: str) -> bool:
+    return body.strip()[:1] in ("@", "\uff20") or body.startswith("/")
+
+
 @dataclass
 class Chat:
     no: int
@@ -66,8 +77,6 @@ class Chat:
         commands = raw.get("commands") or []
         for command in commands:
             lower = command.lower()
-            if not raw.get("isPremium") and (lower in PREMIUM_COLORS or COLOR_CODE.fullmatch(lower)):
-                continue
             if lower in POSITIONS:
                 position = position or lower
             elif lower in FONT_KEYS:
@@ -112,6 +121,7 @@ class CommentLayer:
     index: int
     translucent: bool
     chats: list[Chat]
+    reverse_ranges: list[tuple[float, float]] = field(default_factory=list)
 
 
 @dataclass

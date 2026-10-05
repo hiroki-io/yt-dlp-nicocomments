@@ -85,8 +85,8 @@ def slot_events(slot: Slot, viewport: Viewport, video_scale: float, ass_layer: i
         f"\\c{ass_color(chat.color)}\\3c{ass_color(border)}"
         f"\\1a{ass_alpha(opacity)}\\3a{ass_alpha(STROKE_OPACITY * opacity)}"
     )
-    x0 = (slot.x_at(start_cs * 10) + slot.text_offset_x - viewport.x) * video_scale
-    x1 = (slot.x_at(end_cs * 10) + slot.text_offset_x - viewport.x) * video_scale
+    x0 = (slot.screen_x_at(start_cs * 10) + slot.text_offset_x - viewport.x) * video_scale
+    x1 = (slot.screen_x_at(end_cs * 10) + slot.text_offset_x - viewport.x) * video_scale
 
     events = []
     for line, baseline in zip(chat.lines, slot.line_baselines(), strict=True):

@@ -30,3 +30,13 @@ def test_layers_keep_their_index_and_translucency(fixed_width_chains):
 def test_ng_score_threshold_applies_unless_disabled(fixed_width_chains, ng_score_disabled, expected):
     fetched = FetchedComments([CommentLayer(1, False, [chat(2, -5000), chat(3)])], ng_score_disabled)
     assert numbers(layout(fetched, fixed_width_chains)) == expected
+
+
+def test_reverse_toggle_of_one_layer_stages_the_comments_of_every_layer_again(fixed_width_chains):
+    fetched = FetchedComments(
+        [CommentLayer(0, False, [chat(1, fork="owner")]), CommentLayer(1, False, [chat(2)], [(2500, 60000)])], False
+    )
+    owner_layer, main_layer = layout(fetched, fixed_width_chains)
+    assert [(slot.chat.no, slot.reversed) for slot in owner_layer.slots] == [(1, False), (1, False)]
+    assert [(slot.chat.no, slot.reversed) for slot in main_layer.slots] == [(2, False), (2, True)]
+    assert owner_layer.slots[1].shown_ms == main_layer.slots[1].shown_ms

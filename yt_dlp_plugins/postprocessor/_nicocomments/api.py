@@ -3,8 +3,9 @@ import time
 
 from yt_dlp.networking.exceptions import HTTPError, RequestError
 
-from .comments import Chat, CommentLayer, FetchedComments
+from .comments import Chat, CommentLayer, FetchedComments, allowed_commands, is_script_body
 from .fetch import fetch_bytes
+from .nicoscript import Nicoscripts
 
 API_HEADERS = {"X-Frontend-Id": "6", "X-Frontend-Version": "0"}
 
@@ -60,7 +61,25 @@ def _fetch_comments(ydl, video_id: str) -> FetchedComments:
         },
     )["data"]["threads"]
 
-    layers = {layer["index"]: CommentLayer(layer["index"], layer["isTranslucent"], []) for layer in comment["layers"]}
+    script_threads = {
+        (str(thread["id"]), thread["forkLabel"])
+        for thread in comment.get("threads") or []
+        if thread.get("hasNicoscript")
+    }
+    scripts = Nicoscripts.parse(
+        [
+            raw
+            for thread in threads
+            if (str(thread["id"]), thread["fork"]) in script_threads
+            for raw in thread["comments"]
+        ]
+    )
+    layers = {}
+    for layer in comment["layers"]:
+        is_owner = any(thread_id["forkLabel"] == "owner" for thread_id in layer["threadIds"])
+        layers[layer["index"]] = CommentLayer(
+            layer["index"], layer["isTranslucent"], [], scripts.reverse_ranges(is_owner)
+        )
     thread_layers = {
         (str(thread_id["id"]), thread_id["forkLabel"]): layer["index"]
         for layer in comment["layers"]
@@ -70,6 +89,12 @@ def _fetch_comments(ydl, video_id: str) -> FetchedComments:
         index = thread_layers.get((str(thread["id"]), thread["fork"]))
         if index is None:
             continue
-        layers[index].chats += [Chat.parse(raw, thread["fork"]) for raw in thread["comments"]]
+        is_owner = thread["fork"] == "owner"
+        for raw in thread["comments"]:
+            # The official player hides owner scripts before it applies @置換.
+            if is_owner and is_script_body(raw.get("body") or ""):
+                continue
+            body, commands = scripts.apply(raw, allowed_commands(raw), is_owner)
+            layers[index].chats.append(Chat.parse({**raw, "body": body, "commands": commands}, thread["fork"]))
     ng_score_disabled = bool(((comment.get("ng") or {}).get("ngScore") or {}).get("isDisabled"))
     return FetchedComments(list(layers.values()), ng_score_disabled)
