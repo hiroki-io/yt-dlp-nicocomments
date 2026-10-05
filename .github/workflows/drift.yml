@@ -1,6 +1,17 @@
 name: Drift
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - tools/drift/**
+      - yt_dlp_plugins/postprocessor/_nicocomments/api.py
+      - .github/workflows/drift.yml
+  pull_request:
+    paths:
+      - tools/drift/**
+      - yt_dlp_plugins/postprocessor/_nicocomments/api.py
+      - .github/workflows/drift.yml
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
@@ -39,4 +50,4 @@ jobs:
         with:
           node-version: 24
       - run: npm ci --ignore-scripts
-      - run: node player.mjs check
+      - run: node player.mts check
