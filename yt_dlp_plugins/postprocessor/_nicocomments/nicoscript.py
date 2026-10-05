@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .comments import BASIC_COLORS, COLOR_CODE, FONT_KEYS, POSITIONS, PREMIUM_COLORS, SIZES
+from .comments import BASIC_COLORS, COLOR_CODE_COMMAND, FONT_KEYS, POSITIONS, PREMIUM_COLORS, SIZES
 
 DEFAULT_DURATION_MS = 30000
 SCRIPT_TYPES = {"デフォルト": "default", "置換": "replace", "逆": "reverse"}
@@ -27,7 +27,7 @@ def command_kind(command: str, premium: bool) -> str | None:
         return "position"
     if lower in SIZES:
         return "size"
-    if lower in BASIC_COLORS or (premium and (lower in PREMIUM_COLORS or COLOR_CODE.fullmatch(lower))):
+    if lower in BASIC_COLORS or (premium and (lower in PREMIUM_COLORS or COLOR_CODE_COMMAND.fullmatch(lower))):
         return "color"
     if lower in FONT_KEYS:
         return "font"

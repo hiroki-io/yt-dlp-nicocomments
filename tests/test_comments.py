@@ -44,6 +44,7 @@ def test_parse_ignores_at_commands_of_viewer_comments():
 def test_allowed_commands_drop_premium_colors_of_non_premium_users():
     assert allowed_commands({"commands": ["red2", "Blue", "#00ff00", "big"]}) == ["Blue", "big"]
     assert allowed_commands({"commands": ["Red2", "#00FF00"], "isPremium": True}) == ["Red2", "#00FF00"]
+    assert allowed_commands({"commands": ["#GGGGGG", "#gggggg1"]}) == ["#gggggg1"]
 
 
 def test_parse_splits_lines_and_replaces_tabs():

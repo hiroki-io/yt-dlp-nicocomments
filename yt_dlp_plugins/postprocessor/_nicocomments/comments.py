@@ -38,6 +38,8 @@ PREMIUM_COLORS = {
 }
 COLORS = BASIC_COLORS | PREMIUM_COLORS
 COLOR_CODE = re.compile(r"#[0-9a-f]{6}")
+# The official player treats any 6 alphanumeric characters as a color code when it checks command kinds.
+COLOR_CODE_COMMAND = re.compile(r"#[a-z0-9]{6}", re.IGNORECASE)
 AT_COMMAND = re.compile(r"@(\d+(?:\.\d+)?)")
 LINE_BREAK = re.compile(r"\r\n|\r|\n")
 
@@ -46,7 +48,7 @@ def allowed_commands(raw: dict) -> list[str]:
     commands = raw.get("commands") or []
     if raw.get("isPremium"):
         return list(commands)
-    return [c for c in commands if not (c.lower() in PREMIUM_COLORS or COLOR_CODE.fullmatch(c.lower()))]
+    return [c for c in commands if not (c.lower() in PREMIUM_COLORS or COLOR_CODE_COMMAND.fullmatch(c))]
 
 
 def is_script_body(body: str) -> bool:
