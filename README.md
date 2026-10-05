@@ -62,3 +62,14 @@ Then use the alias instead of the options:
 ```sh
 yt-dlp --nico https://www.nicovideo.jp/watch/sm9
 ```
+
+### Burn the comments into the video
+
+To burn the comment track into the video with an FFmpeg build that includes
+libass:
+
+```sh
+ffmpeg -i video.mkv -vf subtitles=video.mkv -c:a copy video-burned.mp4
+```
+
+FFmpeg encodes the video again, so this takes time and lowers the quality.
