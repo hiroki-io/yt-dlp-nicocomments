@@ -2,6 +2,7 @@ import math
 import os
 import struct
 import sys
+import unicodedata
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -52,8 +53,37 @@ CFF_METRICS_STRING_BOUNDS = {
 }
 
 
+ZERO_WIDTH_CATEGORIES = ("Mn", "Me", "Cf")
+ZERO_WIDTH_JOINER = "\u200d"
+EMOJI_RANGES = (range(0x2600, 0x27C0), range(0x1F000, 0x1FB00))
+EMOJI_MODIFIERS = range(0x1F3FB, 0x1F400)
+REGIONAL_INDICATORS = range(0x1F1E6, 0x1F200)
+
+
 class FontError(Exception):
     pass
+
+
+def extends_cluster(text: str) -> list[bool]:
+    # Browsers shape these characters together with the previous character,
+    # so they add no width and use the font of the previous character.
+    result = []
+    previous = ""
+    regional_indicator_count = 0
+    for char in text:
+        code = ord(char)
+        if code in REGIONAL_INDICATORS:
+            regional_indicator_count += 1
+            result.append(regional_indicator_count % 2 == 0)
+        else:
+            regional_indicator_count = 0
+            result.append(
+                unicodedata.category(char) in ZERO_WIDTH_CATEGORIES
+                or code in EMOJI_MODIFIERS
+                or (previous == ZERO_WIDTH_JOINER and any(code in r for r in EMOJI_RANGES))
+            )
+        previous = char
+    return result
 
 
 def _unpack(f: BinaryIO, offset: int, fmt: str) -> tuple:
@@ -235,8 +265,8 @@ class FontChain:
 
     def runs(self, text: str) -> list[tuple[Face, str]]:
         runs: list[tuple[Face, str]] = []
-        for char in text:
-            face = self.face_for(char)
+        for char, extends in zip(text, extends_cluster(text), strict=True):
+            face = runs[-1][0] if extends and runs else self.face_for(char)
             if runs and runs[-1][0] is face:
                 runs[-1] = (face, runs[-1][1] + char)
             else:
@@ -245,9 +275,10 @@ class FontChain:
 
     def text_width(self, text: str, px: int) -> float:
         width = 0.0
-        for char in text:
-            face = self.face_for(char)
-            width += face.advance(char) / face.units_per_em
+        for char, extends in zip(text, extends_cluster(text), strict=True):
+            if not extends:
+                face = self.face_for(char)
+                width += face.advance(char) / face.units_per_em
         return width * px
 
     def metrics_bounds(self, px: int) -> tuple[int, int]:

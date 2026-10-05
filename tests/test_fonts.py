@@ -154,3 +154,43 @@ def test_face_offsets_of_a_collection_are_read_from_the_ttc_header():
 
 def test_single_font_has_one_face_at_offset_0():
     assert fonts._face_offsets(io.BytesIO(struct.pack(">IHHHH", 0x00010000, 0, 0, 0, 0))) == [0]
+
+
+def synthetic_face(name: str, chars: str, advance: int) -> fonts.Face:
+    return fonts.Face(
+        name,
+        name,
+        False,
+        400,
+        1000,
+        800,
+        1000,
+        [500] + [advance] * len(chars),
+        {ord(char): i + 1 for i, char in enumerate(chars)},
+        (800, 200),
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("❤\ufe0f", [False, True]),
+        ("a\u200bb", [False, True, False]),
+        ("e\u0301", [False, True]),
+        ("\U0001f468\u200d\U0001f469\u200d\U0001f467", [False, True, True, True, True]),
+        ("\U0001f44d\U0001f3fd", [False, True]),
+        ("\U0001f1ef\U0001f1f5\U0001f1fa\U0001f1f8", [False, True, False, True]),
+        ("a\u200db", [False, True, False]),
+    ],
+)
+def test_extends_cluster(text, expected):
+    assert fonts.extends_cluster(text) == expected
+
+
+def test_characters_that_extend_a_cluster_add_no_width_and_use_the_previous_face():
+    latin = synthetic_face("Latin", "a", 600)
+    symbols = synthetic_face("Symbols", "❤", 1000)
+    chain = fonts.FontChain([latin, symbols], 400, 0.0)
+    text = "a❤\ufe0f\u200ba"
+    assert chain.text_width(text, 100) == pytest.approx(60 + 100 + 60)
+    assert chain.runs(text) == [(latin, "a"), (symbols, "❤\ufe0f\u200b"), (latin, "a")]
