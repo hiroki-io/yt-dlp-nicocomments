@@ -23,6 +23,13 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - run: uv run --locked ruff check
       - run: uv run --locked ruff format --check
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+        working-directory: tools/drift
+      - run: npm run lint
+        working-directory: tools/drift
 
   test:
     name: Test on ${{ matrix.os }} / Python ${{ matrix.python-version }}

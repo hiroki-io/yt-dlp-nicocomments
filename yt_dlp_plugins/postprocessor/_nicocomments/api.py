@@ -45,10 +45,9 @@ def fetch_comments(ydl, video_id: str) -> FetchedComments:
         raise CommentAPIError(f"unexpected response from the comment API: {e!r}") from e
 
 
-def _fetch_comments(ydl, video_id: str) -> FetchedComments:
-    comment = fetch_watch_data(ydl, video_id)["comment"]
+def fetch_threads(ydl, comment: dict) -> list[dict]:
     nv = comment["nvComment"]
-    threads = fetch_json(
+    return fetch_json(
         ydl,
         f"{nv['server']}/v1/threads",
         data={"additionals": {}, "params": nv["params"], "threadKey": nv["threadKey"]},
@@ -60,6 +59,11 @@ def _fetch_comments(ydl, video_id: str) -> FetchedComments:
             "X-Client-Os-Type": "others",
         },
     )["data"]["threads"]
+
+
+def _fetch_comments(ydl, video_id: str) -> FetchedComments:
+    comment = fetch_watch_data(ydl, video_id)["comment"]
+    threads = fetch_threads(ydl, comment)
 
     script_threads = {
         (str(thread["id"]), thread["forkLabel"])
