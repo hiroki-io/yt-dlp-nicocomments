@@ -116,7 +116,8 @@ class Slot:
         text_height = (
             max(unshrunk_line_height, top + bottom + unshrunk_stroke) + (line_count - 1) * unshrunk_line_height
         )
-        # shrink is applied twice on purpose because this matches screenshots of the official player better.
+        # Copies the official player, which multiplies the text height by shrink
+        # although the height already includes it.
         centered_top = (self.height - text_height * shrink * shrink) / 2
         text_top = centered_top + self.font_chain.adjust_baseline * self.line_height * shrink
         first = self.y + text_top + STROKE_WIDTH / 2 + top * shrink
