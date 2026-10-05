@@ -40,7 +40,7 @@ COLORS = BASIC_COLORS | PREMIUM_COLORS
 COLOR_CODE = re.compile(r"#[0-9a-f]{6}")
 # The official player treats any 6 alphanumeric characters as a color code when it checks command kinds.
 COLOR_CODE_COMMAND = re.compile(r"#[a-z0-9]{6}", re.IGNORECASE)
-AT_COMMAND = re.compile(r"@(\d+(?:\.\d+)?)")
+AT_COMMAND = re.compile(r"@([0-9]+(?:\.[0-9]+)?)")
 LINE_BREAK = re.compile(r"\r\n|\r|\n")
 
 

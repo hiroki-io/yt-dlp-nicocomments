@@ -56,6 +56,10 @@ def test_parse_ignores_at_commands_that_are_not_positive():
     assert chat(commands=["@0", "@5"]).at_seconds == 5.0
 
 
+def test_parse_ignores_at_commands_with_full_width_digits():
+    assert chat(commands=["@\uff11\uff10", "@5"]).at_seconds == 5.0
+
+
 @pytest.mark.parametrize(
     ("body", "expected"),
     [

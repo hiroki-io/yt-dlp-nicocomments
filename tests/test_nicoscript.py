@@ -93,6 +93,11 @@ def test_reverse_targets_both_kinds_of_comments_by_default():
     assert scripts.reverse_ranges(is_owner=False) == [(1000, 31000), (50000, 55000)]
 
 
+def test_time_range_ignores_at_commands_with_full_width_digits():
+    scripts = Nicoscripts.parse([raw("@逆", ["@\uff15"], vpos_ms=1000)])
+    assert scripts.reverse_ranges(is_owner=True) == [(1000, 31000)]
+
+
 def test_unknown_scripts_and_ordinary_comments_are_ignored():
     scripts = Nicoscripts.parse([raw("@ジャンプ #1:00"), raw("@置換"), raw("comment @逆"), raw("@unknown")])
     assert scripts == Nicoscripts()

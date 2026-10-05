@@ -10,7 +10,7 @@ SCRIPT_TYPES = {"デフォルト": "default", "置換": "replace", "逆": "rever
 TARGETS = {"全": frozenset({False, True}), "コメ": frozenset({False}), "投コメ": frozenset({True})}
 ESCAPES = {"n": "\n", "r": "\r", "t": "\t"}
 FIRST_TOKEN = re.compile(r"(\S*)\s+(.*)", re.DOTALL)
-AT_COMMAND = re.compile(r"(?:^|\s)@(\d+(?:\.\d+)?)(?:\s|$)")
+AT_COMMAND = re.compile(r"(?:^|\s)@([0-9]+(?:\.[0-9]+)?)(?:\s|$)")
 ESCAPE = re.compile(r"\\([^\n\r\u2028\u2029])")
 # The official player joins the names without a group, so "^" and "$" bind only to the first and last names.
 COMMAND_KIND_PATTERNS = {
