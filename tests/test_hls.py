@@ -30,7 +30,7 @@ def test_playlist_without_segments_is_an_error():
 
 def test_request_error_becomes_a_playlist_error():
     with pytest.raises(PlaylistError, match="timed out"):
-        fetch_playlist_duration(FakeDownloader([TransportError("timed out")]), "https://example.com/a.m3u8")
+        fetch_playlist_duration(FakeDownloader([TransportError("timed out")] * 3), "https://example.com/a.m3u8")
 
 
 def hls_format(url):

@@ -124,7 +124,7 @@ def test_content_length_is_rounded_down():
 
 
 def test_content_length_falls_back_to_the_api_duration():
-    ydl = FakeDownloader([TransportError("timed out")])
+    ydl = FakeDownloader([TransportError("timed out")] * 3)
     info = video_info(
         requested_formats=[{"url": "https://example.com/v.m3u8", "protocol": "m3u8_native"}], duration=100
     )

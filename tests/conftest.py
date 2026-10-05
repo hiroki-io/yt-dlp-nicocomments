@@ -4,7 +4,7 @@ import json
 import pytest
 from PIL import ImageFont
 
-from yt_dlp_plugins.postprocessor._nicocomments import fonts
+from yt_dlp_plugins.postprocessor._nicocomments import fetch, fonts
 from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS
 
 
@@ -45,6 +45,13 @@ class FakeDownloader:
 
     def report_warning(self, text, *args, **kwargs):
         self.warnings.append(text)
+
+
+@pytest.fixture(autouse=True)
+def sleeps(monkeypatch):
+    calls = []
+    monkeypatch.setattr(fetch.time, "sleep", calls.append)
+    return calls
 
 
 @pytest.fixture
