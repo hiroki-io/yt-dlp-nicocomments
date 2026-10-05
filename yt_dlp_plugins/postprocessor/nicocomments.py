@@ -47,13 +47,13 @@ def parse_choice_option(name: str, value: str, choices: dict):
 
 
 class NicoCommentsPP(PostProcessor):
-    def __init__(self, downloader=None, opacity="1", default="true", ngscore="middle", **kwargs):
+    def __init__(self, downloader=None, opacity="1", default="true", nglevel="medium", **kwargs):
         if kwargs:
             raise optparse.OptionValueError(f"NicoComments: unknown options: {', '.join(kwargs)}")
         super().__init__(downloader)
         self._opacity = parse_opacity_option(opacity)
         self._default = parse_choice_option("default", default, BOOLEAN_VALUES)
-        self._ng_score_threshold = parse_choice_option("ngscore", ngscore, NG_SCORE_THRESHOLDS)
+        self._ng_score_threshold = parse_choice_option("nglevel", nglevel, NG_SCORE_THRESHOLDS)
         self._checked_fonts = False
 
     def run(self, info):

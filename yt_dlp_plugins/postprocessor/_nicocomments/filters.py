@@ -1,6 +1,6 @@
 from .comments import Chat, FetchedComments
 
-NG_SCORE_THRESHOLDS = {"high": -1000, "middle": -4800, "low": -10000, "none": None}
+NG_SCORE_THRESHOLDS = {"high": -1000, "medium": -4800, "low": -10000, "none": None}
 
 
 def effective_ng_score_threshold(fetched: FetchedComments, ng_score_threshold: int | None) -> int | None:

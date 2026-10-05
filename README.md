@@ -41,8 +41,8 @@ Options are passed after the name, separated by semicolons:
 - `opacity`: comment opacity (default: 1)
 - `default`: mark the embedded subtitle track as default: `true`, `yes`, `1`,
   `false`, `no`, or `0` (default: true)
-- `ngscore`: hide comments that many users added to their NG list: `high`,
-  `middle`, `low`, or `none` (default: middle)
+- `nglevel`: hide comments that many users added to their NG list: `high`,
+  `medium`, `low`, or `none` (default: medium). `high` hides the most comments.
 
 ```sh
 --use-postprocessor "NicoComments:when=video;opacity=0.8"

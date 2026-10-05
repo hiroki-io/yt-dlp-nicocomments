@@ -46,7 +46,7 @@ def fake_fonts_and_comments(monkeypatch):
         ({"opacity": "nan"}, "opacity must be a number from 0 to 1, not nan"),
         ({"opacity": "1.5"}, "opacity must be a number from 0 to 1, not 1.5"),
         ({"default": "maybe"}, "default must be one of true, yes, 1, false, no, 0, not maybe"),
-        ({"ngscore": "max"}, "ngscore must be one of high, middle, low, none, not max"),
+        ({"nglevel": "max"}, "nglevel must be one of high, medium, low, none, not max"),
         ({"opacty": "0.8", "fontsize": "2"}, "unknown options: opacty, fontsize"),
     ],
 )

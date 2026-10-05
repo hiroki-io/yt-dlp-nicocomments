@@ -10,7 +10,7 @@ def chat(no, score=0, fork="main"):
 
 
 def layout(fetched, chains):
-    return layout_comments(fetched, chains, None, NG_SCORE_THRESHOLDS["middle"], "sm9")
+    return layout_comments(fetched, chains, None, NG_SCORE_THRESHOLDS["medium"], "sm9")
 
 
 def numbers(slot_layers):

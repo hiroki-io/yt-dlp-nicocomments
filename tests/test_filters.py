@@ -16,8 +16,8 @@ def chat(body="comment", fork="main", score=0, commands=()):
 @pytest.mark.parametrize(
     ("level", "score", "hidden"),
     [
-        ("middle", -4799, False),
-        ("middle", -4800, True),
+        ("medium", -4799, False),
+        ("medium", -4800, True),
         ("high", -1000, True),
         ("low", -9999, False),
         ("none", -100000, False),
@@ -33,7 +33,7 @@ def test_ng_score_does_not_hide_owner_comments():
 
 def test_visible_chats_removes_hidden_comments():
     chats = [chat(body="shown"), chat(body="low score", score=-5000)]
-    assert [chat.lines for chat in visible_chats(chats, NG_SCORE_THRESHOLDS["middle"])] == [["shown"]]
+    assert [chat.lines for chat in visible_chats(chats, NG_SCORE_THRESHOLDS["medium"])] == [["shown"]]
 
 
 def test_invisible_command_hides_the_comment():
@@ -43,4 +43,4 @@ def test_invisible_command_hides_the_comment():
 @pytest.mark.parametrize(("ng_score_disabled", "expected"), [(False, -4800), (True, None)])
 def test_ng_score_disabled_by_the_api_removes_the_threshold(ng_score_disabled, expected):
     fetched = FetchedComments([], ng_score_disabled)
-    assert effective_ng_score_threshold(fetched, NG_SCORE_THRESHOLDS["middle"]) == expected
+    assert effective_ng_score_threshold(fetched, NG_SCORE_THRESHOLDS["medium"]) == expected
