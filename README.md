@@ -58,11 +58,12 @@ yt-dlp --embed-subs --use-postprocessor "NicoComments:when=video" \
 
 Options are passed after the name, separated by semicolons:
 
-- `opacity`: comment opacity (default: 1)
-- `default`: mark the embedded subtitle track as default: `true`, `yes`, `1`,
-  `false`, `no`, or `0` (default: true)
-- `nglevel`: hide comments that many users added to their NG list: `high`,
-  `medium`, `low`, or `none` (default: medium). `high` hides the most comments.
+- `opacity`: comment opacity (default: `1`)
+- `default`: mark the embedded subtitle track as default (`true`, `yes`, `1`,
+  `false`, `no`, or `0`; default: `true`)
+- `nglevel`: hide comments that many users added to their NG lists (`high`,
+  `medium`, `low`, or `none`; default: `medium`). `high` hides the most
+  comments.
 
 ```sh
 --use-postprocessor "NicoComments:when=video;opacity=0.8"
@@ -73,7 +74,7 @@ Options are passed after the name, separated by semicolons:
 To shorten the command, define an alias in the yt-dlp configuration file
 `~/.config/yt-dlp/config`:
 
-```
+```text
 --alias --nico "--embed-subs --use-postprocessor NicoComments:when=video"
 ```
 
@@ -85,8 +86,8 @@ yt-dlp --nico https://www.nicovideo.jp/watch/sm9
 
 ### Burn the comments into the video
 
-To burn the comment track into the video with an FFmpeg build that includes
-libass:
+To burn the comment track into the video, run this command with an FFmpeg build
+that includes libass:
 
 ```sh
 ffmpeg -i video.mkv -vf subtitles=video.mkv -c:a copy video-burned.mp4

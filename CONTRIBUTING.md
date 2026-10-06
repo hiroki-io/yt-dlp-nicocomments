@@ -21,9 +21,9 @@ player that can affect the plugin:
 
 - `tools/drift/api.py` checks the API response fields that the plugin uses.
 - `tools/drift/player.mts` compares the comment code of the official player with
-  `tools/drift/official.json`. To keep the official code out of this repository,
-  the file records only hashes and names. Run `node player.mts check` locally to
-  see the changed code.
+  `tools/drift/official.json`. The file records only hashes and names so that
+  the official code stays out of this repository. Run
+  `node tools/drift/player.mts check` locally to see the changed code.
 
 When the official player changes, update the plugin and run
 `node tools/drift/player.mts update`.
