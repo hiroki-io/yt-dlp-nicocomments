@@ -63,6 +63,12 @@ def test_non_hex_color_codes_count_as_colors_like_the_official_player():
     assert apply(scripts, raw("a", ["blue"])) == ("b", ["#gggggg"])
 
 
+def test_color_codes_with_non_ascii_letters_are_not_colors():
+    scripts = Nicoscripts.parse([raw("@デフォルト", ["red"], vpos_ms=0)])
+    assert apply(scripts, raw(commands=["#\u212a12345"])) == ("comment", ["#\u212a12345", "red"])
+    assert apply(scripts, raw(commands=["#\u0130abcde"])) == ("comment", ["#\u0130abcde", "red"])
+
+
 def test_replacement_replaces_every_occurrence_for_viewer_comments_by_default():
     scripts = Nicoscripts.parse([raw("@置換 a b", vpos_ms=0)])
     assert apply(scripts, raw("banana")) == ("bbnbnb", [])

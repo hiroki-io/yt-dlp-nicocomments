@@ -39,8 +39,8 @@ PREMIUM_COLORS = {
 COLORS = BASIC_COLORS | PREMIUM_COLORS
 AI_COMMENT_COLOR = "DCDCDC"
 COLOR_CODE = re.compile(r"#[0-9a-f]{6}")
-# The official player treats any 6 alphanumeric characters as a color code when it checks command kinds.
-COLOR_CODE_COMMAND = re.compile(r"#[a-z0-9]{6}", re.IGNORECASE)
+# The official player treats any 6 ASCII letters or digits as a color code when it checks command kinds.
+COLOR_CODE_COMMAND = re.compile(r"#[a-zA-Z0-9]{6}")
 AT_COMMAND = re.compile(r"@([0-9]+(?:\.[0-9]+)?)")
 LINE_BREAK = re.compile(r"\r\n|\r|\n")
 

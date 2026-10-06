@@ -52,6 +52,11 @@ def test_allowed_commands_drop_premium_colors_of_non_premium_users():
     assert allowed_commands({"commands": ["#GGGGGG", "#gggggg1"]}) == ["#gggggg1"]
 
 
+def test_allowed_commands_keep_color_codes_with_non_ascii_letters():
+    commands = ["#\u212a12345", "#\u0130abcde", "#\u017f12345"]
+    assert allowed_commands({"commands": commands}) == commands
+
+
 def test_parse_splits_lines_and_replaces_tabs():
     assert chat(body="a\tb\r\nc\rd\ne").lines == ["a  b", "c", "d", "e"]
 

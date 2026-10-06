@@ -27,7 +27,7 @@ def command_kind(command: str, premium: bool) -> str | None:
         return "position"
     if lower in SIZES:
         return "size"
-    if lower in BASIC_COLORS or (premium and (lower in PREMIUM_COLORS or COLOR_CODE_COMMAND.fullmatch(lower))):
+    if lower in BASIC_COLORS or (premium and (lower in PREMIUM_COLORS or COLOR_CODE_COMMAND.fullmatch(command))):
         return "color"
     if lower in FONT_KEYS:
         return "font"
