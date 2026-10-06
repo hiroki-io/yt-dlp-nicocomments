@@ -41,19 +41,44 @@ AI_COMMENT_COLOR = "DCDCDC"
 COLOR_CODE = re.compile(r"#[0-9a-f]{6}")
 # The official player treats any 6 ASCII letters or digits as a color code when it checks command kinds.
 COLOR_CODE_COMMAND = re.compile(r"#[a-zA-Z0-9]{6}")
-AT_COMMAND = re.compile(r"@([0-9]+(?:\.[0-9]+)?)")
+DURATION_COMMAND = re.compile(r"@([0-9]+(?:\.[0-9]+)?)")
 LINE_BREAK = re.compile(r"\r\n|\r|\n")
+SCRIPT_PREFIXES = ("@", "\uff20")
+
+
+def is_premium_color(command: str) -> bool:
+    return command.lower() in PREMIUM_COLORS or bool(COLOR_CODE_COMMAND.fullmatch(command))
+
+
+def command_kind(command: str, premium: bool) -> str | None:
+    lower = command.lower()
+    if lower in POSITIONS:
+        return "position"
+    if lower in SIZES:
+        return "size"
+    if lower in BASIC_COLORS or (premium and is_premium_color(command)):
+        return "color"
+    if lower in FONT_KEYS:
+        return "font"
+    return None
 
 
 def allowed_commands(raw: dict) -> list[str]:
     commands = raw.get("commands") or []
     if raw.get("isPremium"):
         return list(commands)
-    return [c for c in commands if not (c.lower() in PREMIUM_COLORS or COLOR_CODE_COMMAND.fullmatch(c))]
+    return [c for c in commands if not is_premium_color(c)]
 
 
 def is_script_body(body: str) -> bool:
-    return body.strip()[:1] in ("@", "\uff20") or body.startswith("/")
+    return body.strip()[:1] in SCRIPT_PREFIXES or body.startswith("/")
+
+
+def color_value(command: str) -> str | None:
+    lower = command.lower()
+    if lower in COLORS:
+        return COLORS[lower]
+    return lower[1:].upper() if COLOR_CODE.fullmatch(lower) else None
 
 
 @dataclass
@@ -79,18 +104,19 @@ class Chat:
         is_owner = fork == "owner"
         for command in commands:
             lower = command.lower()
-            if lower in POSITIONS:
+            kind = command_kind(command, premium=True)
+            if kind == "position":
                 position = position or lower
-            elif lower in FONT_KEYS:
+            elif kind == "font":
                 font_key = font_key or lower
-            elif lower in SIZES:
+            elif kind == "size":
                 size = size or lower
-            elif lower in COLORS:
-                color = color or COLORS[lower]
-            elif COLOR_CODE.fullmatch(lower):
-                color = color or lower[1:].upper()
-            elif is_owner and at is None and (m := AT_COMMAND.fullmatch(command)) and (seconds := float(m[1])) > 0:
-                at = seconds
+            elif kind == "color":
+                color = color or color_value(command)
+            elif is_owner and at is None and (m := DURATION_COMMAND.fullmatch(command)):
+                seconds = float(m[1])
+                if seconds > 0:
+                    at = seconds
         return cls(
             no=no,
             vpos_ms=vpos_ms,

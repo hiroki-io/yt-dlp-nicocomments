@@ -3,14 +3,14 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .comments import BASIC_COLORS, COLOR_CODE_COMMAND, FONT_KEYS, POSITIONS, PREMIUM_COLORS, SIZES
+from .comments import BASIC_COLORS, FONT_KEYS, POSITIONS, PREMIUM_COLORS, SCRIPT_PREFIXES, SIZES, command_kind
 
 DEFAULT_DURATION_MS = 30000
 SCRIPT_TYPES = {"デフォルト": "default", "置換": "replace", "逆": "reverse"}
 TARGETS = {"全": frozenset({False, True}), "コメ": frozenset({False}), "投コメ": frozenset({True})}
 ESCAPES = {"n": "\n", "r": "\r", "t": "\t"}
 FIRST_TOKEN = re.compile(r"(\S*)\s+(.*)", re.DOTALL)
-AT_COMMAND = re.compile(r"(?:^|\s)@([0-9]+(?:\.[0-9]+)?)(?:\s|$)")
+DURATION_TOKEN = re.compile(r"(?:^|\s)@([0-9]+(?:\.[0-9]+)?)(?:\s|$)")
 ESCAPE = re.compile(r"\\([^\n\r\u2028\u2029])")
 # The official player joins the names without a group, so "^" and "$" bind only to the first and last names.
 COMMAND_KIND_PATTERNS = {
@@ -19,19 +19,6 @@ COMMAND_KIND_PATTERNS = {
     "color": "|".join([*BASIC_COLORS, *PREMIUM_COLORS, "^#[0-9a-fA-F]{6}$"]),
     "font": "|".join(FONT_KEYS),
 }
-
-
-def command_kind(command: str, premium: bool) -> str | None:
-    lower = command.lower()
-    if lower in POSITIONS:
-        return "position"
-    if lower in SIZES:
-        return "size"
-    if lower in BASIC_COLORS or (premium and (lower in PREMIUM_COLORS or COLOR_CODE_COMMAND.fullmatch(command))):
-        return "color"
-    if lower in FONT_KEYS:
-        return "font"
-    return None
 
 
 def style_commands(raw: dict) -> dict[str, str]:
@@ -83,7 +70,7 @@ def split_arguments(text: str) -> list[str]:
 def time_range(raw: dict, default_ms: float) -> tuple[float, float]:
     duration = default_ms
     for command in raw.get("commands") or []:
-        if m := AT_COMMAND.search(command):
+        if m := DURATION_TOKEN.search(command):
             duration = float(m[1]) * 1000
             break
     return raw["vposMs"], raw["vposMs"] + duration
@@ -141,7 +128,7 @@ class Nicoscripts:
         scripts = cls()
         for raw in raws:
             name, arguments = split_first(raw.get("body") or "", quoted=False)
-            if name[:1] not in ("@", "\uff20"):
+            if name[:1] not in SCRIPT_PREFIXES:
                 continue
             script_type = SCRIPT_TYPES.get(name[1:])
             if script_type == "default":

@@ -1,6 +1,12 @@
 import pytest
 
-from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat, allowed_commands, is_script_body
+from yt_dlp_plugins.postprocessor._nicocomments.comments import (
+    Chat,
+    allowed_commands,
+    color_value,
+    command_kind,
+    is_script_body,
+)
 
 
 def chat(body="comment", commands=(), fork="owner"):
@@ -55,6 +61,36 @@ def test_allowed_commands_drop_premium_colors_of_non_premium_users():
 def test_allowed_commands_keep_color_codes_with_non_ascii_letters():
     commands = ["#\u212a12345", "#\u0130abcde", "#\u017f12345"]
     assert allowed_commands({"commands": commands}) == commands
+
+
+def test_parse_skips_color_codes_that_are_not_hex():
+    assert chat(commands=["#gggggg", "#00ff00"]).color == "00FF00"
+
+
+@pytest.mark.parametrize(
+    ("command", "premium", "expected"),
+    [
+        ("Shita", False, "position"),
+        ("small", False, "size"),
+        ("Gothic", False, "font"),
+        ("RED", False, "color"),
+        ("red2", False, None),
+        ("red2", True, "color"),
+        ("#GGGGGG", False, None),
+        ("#GGGGGG", True, "color"),
+        ("full", True, None),
+    ],
+)
+def test_command_kind(command, premium, expected):
+    assert command_kind(command, premium) == expected
+
+
+@pytest.mark.parametrize(
+    ("command", "expected"),
+    [("Red", "FF0000"), ("niconicowhite", "CCCC99"), ("#00ffAA", "00FFAA"), ("#gggggg", None)],
+)
+def test_color_value(command, expected):
+    assert color_value(command) == expected
 
 
 def test_parse_splits_lines_and_replaces_tabs():
