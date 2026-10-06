@@ -16,6 +16,9 @@ dependencies = []
 [dependency-groups]
 dev = ["pillow", "pytest", "ruff", "yt-dlp"]
 
+[tool.hatch.build.targets.sdist]
+include = ["/yt_dlp_plugins", "/tests", "/tools/drift/official.json"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["yt_dlp_plugins"]
 

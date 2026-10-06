@@ -15,18 +15,38 @@ Install the fonts that the official player uses on your platform:
 
 ## Install
 
-Put this repository in a yt-dlp plugin directory:
+If yt-dlp is installed with uv or pip, install the plugin in the same
+environment:
+
+```sh
+uv tool install yt-dlp --with yt-dlp-nicocomments
+```
+
+```sh
+pip install -U yt-dlp-nicocomments
+```
+
+If you use the yt-dlp executable, download the `.whl` file from the
+[latest release](https://github.com/hiroki-io/yt-dlp-nicocomments/releases/latest)
+and put it in a yt-dlp plugin directory:
+
+| Platform     | Plugin directory            |
+| ------------ | --------------------------- |
+| macOS, Linux | `~/.config/yt-dlp/plugins/` |
+| Windows      | `%APPDATA%\yt-dlp\plugins\` |
+
+To make sure that the release workflow of this repository built the file, run:
+
+```sh
+gh attestation verify yt_dlp_nicocomments-*.whl -R hiroki-io/yt-dlp-nicocomments
+```
+
+To use the code from a clone of this repository, put the repository in a plugin
+directory:
 
 ```sh
 mkdir -p ~/.config/yt-dlp/plugins
 ln -s ~/yt-dlp-nicocomments ~/.config/yt-dlp/plugins/yt-dlp-nicocomments
-```
-
-If yt-dlp is installed with pip or uv, you can also install the plugin as a
-package:
-
-```sh
-uv tool install yt-dlp --with ~/yt-dlp-nicocomments
 ```
 
 ## Usage
