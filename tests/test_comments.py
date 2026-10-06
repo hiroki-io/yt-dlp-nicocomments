@@ -3,8 +3,8 @@ import pytest
 from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat, allowed_commands, is_script_body
 
 
-def chat(body="comment", commands=(), fork="owner", premium=True):
-    return Chat.parse({"no": 1, "vposMs": 10000, "body": body, "commands": list(commands), "isPremium": premium}, fork)
+def chat(body="comment", commands=(), fork="owner"):
+    return Chat.parse(no=1, vpos_ms=10000, score=0, body=body, commands=list(commands), fork=fork)
 
 
 def test_parse_takes_the_first_command_of_each_kind():

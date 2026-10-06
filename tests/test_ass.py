@@ -32,9 +32,7 @@ def make_chain() -> FontChain:
 
 
 def make_slot(body="comment", commands=(), vpos_ms=0, no=1, shown_ms=1000, hidden_ms=6000) -> Slot:
-    chat = Chat.parse(
-        {"no": no, "vposMs": vpos_ms, "body": body, "commands": list(commands), "isPremium": True}, "main"
-    )
+    chat = Chat.parse(no=no, vpos_ms=vpos_ms, score=0, body=body, commands=list(commands), fork="main")
     slot = Slot(chat, make_chain(), 30.0, 32.0)
     slot.start_ms, slot.end_ms = shown_ms + FRONT_ADJUST_MS, hidden_ms - BEHIND_ADJUST_MS
     slot.initial_x, slot.target_x = 600.0, 0.0
@@ -61,7 +59,7 @@ def test_viewport_fits_the_video_in_the_16_9_stage(size, expected):
 
 
 def test_live_command_and_translucent_layer_reduce_opacity():
-    chat = Chat.parse({"vposMs": 0, "commands": ["_live"]}, "main")
+    chat = Chat.parse(no=1, vpos_ms=0, score=0, body="comment", commands=["_live"], fork="main")
     assert comment_opacity(chat, translucent=True) == 0.25
 
 

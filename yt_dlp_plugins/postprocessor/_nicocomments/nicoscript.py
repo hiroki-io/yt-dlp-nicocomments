@@ -180,18 +180,16 @@ class Nicoscripts:
         scripts.replacements.sort(key=lambda r: (r.start_ms, r.posted_at_ms))
         return scripts
 
-    def apply(self, raw: dict, commands: list[str], is_owner: bool) -> tuple[str, list[str]]:
-        vpos = raw["vposMs"]
+    def apply(self, *, body: str, vpos_ms: int, commands: list[str], is_owner: bool) -> tuple[str, list[str]]:
         present = {kind for command in commands if (kind := command_kind(command, premium=True))}
         added = []
         for default in self.defaults:
-            if default.start_ms <= vpos < default.end_ms:
+            if default.start_ms <= vpos_ms < default.end_ms:
                 added += [command for kind, command in default.commands.items() if kind not in present]
         commands = commands + added
 
-        body = raw.get("body") or ""
         for replacement in self.replacements:
-            if is_owner not in replacement.targets or not replacement.start_ms <= vpos < replacement.end_ms:
+            if is_owner not in replacement.targets or not replacement.start_ms <= vpos_ms < replacement.end_ms:
                 continue
             if replacement.exact:
                 if body != replacement.source:

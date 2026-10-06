@@ -74,10 +74,9 @@ class Chat:
     at_seconds: float | None
 
     @classmethod
-    def parse(cls, raw: dict, fork: str) -> "Chat":
+    def parse(cls, *, no: int, vpos_ms: int, score: int, body: str, commands: list[str], fork: str) -> "Chat":
         position = size = color = font_key = at = None
         is_owner = fork == "owner"
-        commands = raw.get("commands") or []
         for command in commands:
             lower = command.lower()
             if lower in POSITIONS:
@@ -92,13 +91,12 @@ class Chat:
                 color = color or lower[1:].upper()
             elif is_owner and at is None and (m := AT_COMMAND.fullmatch(command)) and (seconds := float(m[1])) > 0:
                 at = seconds
-        body = (raw.get("body") or "").replace("\t", "  ")
         return cls(
-            no=raw.get("no", 0),
-            vpos_ms=raw["vposMs"],
+            no=no,
+            vpos_ms=vpos_ms,
             is_owner=is_owner,
-            score=raw.get("score", 0),
-            lines=LINE_BREAK.split(body),
+            score=score,
+            lines=LINE_BREAK.split(body.replace("\t", "  ")),
             full="full" in commands,
             ender="ender" in commands,
             invisible="invisible" in commands,

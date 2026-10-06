@@ -15,7 +15,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.layout import (
 
 
 def chat(vpos_ms=10000, body="comment", commands=(), no=1):
-    return Chat.parse({"no": no, "vposMs": vpos_ms, "body": body, "commands": list(commands)}, "owner")
+    return Chat.parse(no=no, vpos_ms=vpos_ms, score=0, body=body, commands=list(commands), fork="owner")
 
 
 def make_stage(font_chains):

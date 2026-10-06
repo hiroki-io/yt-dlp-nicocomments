@@ -41,7 +41,18 @@ def assemble_comments(comment: dict, threads: list[dict]) -> VideoComments:
                 continue
             if not is_owner and (body := apply_owner_ngs(body, owner_ngs)) is None:
                 continue
-            body, commands = scripts.apply({**raw, "body": body}, allowed_commands(raw), is_owner)
-            layers[index].chats.append(Chat.parse({**raw, "body": body, "commands": commands}, thread["fork"]))
+            vpos_ms = raw["vposMs"]
+            body, commands = scripts.apply(
+                body=body, vpos_ms=vpos_ms, commands=allowed_commands(raw), is_owner=is_owner
+            )
+            chat = Chat.parse(
+                no=raw.get("no", 0),
+                vpos_ms=vpos_ms,
+                score=raw.get("score", 0),
+                body=body,
+                commands=commands,
+                fork=thread["fork"],
+            )
+            layers[index].chats.append(chat)
     ng_score_disabled = bool(((comment.get("ng") or {}).get("ngScore") or {}).get("isDisabled"))
     return VideoComments(list(layers.values()), ng_score_disabled)

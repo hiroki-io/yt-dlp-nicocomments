@@ -10,7 +10,9 @@ def raw(body="comment", commands=(), vpos_ms=10000, premium=True, posted_at="202
 
 
 def apply(scripts, comment, is_owner=False):
-    return scripts.apply(comment, comment["commands"], is_owner)
+    return scripts.apply(
+        body=comment["body"], vpos_ms=comment["vposMs"], commands=comment["commands"], is_owner=is_owner
+    )
 
 
 @pytest.mark.parametrize(

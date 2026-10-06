@@ -46,6 +46,11 @@ def test_threads_are_grouped_into_layers_by_id_and_fork():
     assert not comments.ng_score_disabled
 
 
+def test_missing_comment_fields_use_default_values():
+    (chat,) = assemble_comments(watch_comment(), [thread("1", "owner", {"vposMs": 0})]).layers[0].chats
+    assert (chat.no, chat.score, chat.lines, chat.color) == (0, 0, [""], "FFFFFF")
+
+
 def test_ng_score_is_disabled_when_the_watch_api_disables_it():
     assert assemble_comments(watch_comment(ng={"ngScore": {"isDisabled": True}}), []).ng_score_disabled
 

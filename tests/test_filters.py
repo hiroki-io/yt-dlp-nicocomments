@@ -11,7 +11,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.filters import (
 
 
 def chat(body="comment", fork="main", score=0, commands=()):
-    return Chat.parse({"vposMs": 0, "body": body, "score": score, "commands": list(commands)}, fork)
+    return Chat.parse(no=1, vpos_ms=0, score=score, body=body, commands=list(commands), fork=fork)
 
 
 @pytest.mark.parametrize(

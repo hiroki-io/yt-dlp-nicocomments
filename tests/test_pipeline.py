@@ -6,7 +6,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.pipeline import layout_comments
 
 
 def chat(no, score=0, fork="main"):
-    return Chat.parse({"no": no, "vposMs": 1000 * no, "body": "comment", "score": score}, fork)
+    return Chat.parse(no=no, vpos_ms=1000 * no, score=score, body="comment", commands=[], fork=fork)
 
 
 def layout(comments, chains):
