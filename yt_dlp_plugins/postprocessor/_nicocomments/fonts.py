@@ -39,6 +39,8 @@ CHAIN_SPECS = {
         "mincho": ChainSpec(400, 0.0, ("NotoSerifCJKjp-Regular",)),
     },
 }
+# libass cannot draw color fonts, so the chains use a monochrome emoji font.
+EMOJI_FACE_NAME = "NotoEmoji-Regular"
 # Ink bounds of METRICS_STRING above and below the baseline, in font units.
 # CFF fonts have no table of glyph bounds, so these values are measured once.
 CFF_METRICS_STRING_BOUNDS = {
@@ -212,6 +214,8 @@ class Face:
     advances: list[int]
     cmap: dict[int, int]
     metrics_bounds: tuple[int, int] | None
+    family_name: str = ""
+    is_variable: bool = False
 
     @classmethod
     def load(cls, path: Path, offset: int) -> "Face":
@@ -240,6 +244,8 @@ class Face:
             [advance for advance, _ in struct.iter_unpack(">Hh", hmtx[: 4 * metric_count])],
             cmap,
             bounds,
+            names.get(1, ""),
+            b"fvar" in tables,
         )
 
     def has_char(self, char: str) -> bool:
@@ -288,7 +294,8 @@ class FontChain:
 
     def synthetic_bold(self, face: Face) -> bool:
         # Browsers synthesize bold when the CSS weight is bold and the face is not.
-        return self.weight >= 600 and face.weight_class < 600
+        # Browsers do not synthesize bold for color emoji, and \b1 makes fontconfig select the Bold instance.
+        return self.weight >= 600 and face.weight_class < 600 and face.postscript_name != EMOJI_FACE_NAME
 
 
 def platform_key() -> str:
@@ -339,7 +346,7 @@ def find_faces(names: set[str]) -> dict[str, tuple[Path, int]]:
 @cache
 def load_font_chains() -> dict[str, FontChain]:
     specs = CHAIN_SPECS[platform_key()]
-    names = {name for spec in specs.values() for name in spec.face_names}
+    names = {name for spec in specs.values() for name in spec.face_names} | {EMOJI_FACE_NAME}
     locations = find_faces(names)
     faces = {}
     for name, (path, offset) in locations.items():
@@ -355,5 +362,7 @@ def load_font_chains() -> dict[str, FontChain]:
         if not any(face.metrics_bounds for face in available):
             raise FontError(f"no glyph bounds for the fonts of {key}: {', '.join(spec.face_names)}")
         missing = tuple(name for name in spec.face_names if name not in faces)
+        if EMOJI_FACE_NAME in faces:
+            available.append(faces[EMOJI_FACE_NAME])
         chains[key] = FontChain(available, spec.weight, spec.adjust_baseline, missing)
     return chains

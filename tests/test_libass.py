@@ -35,8 +35,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def render(chain: fonts.FontChain, tmp_path) -> tuple[Image.Image, dict[str, str]]:
-    runs = chain.runs(TEXT)
+def render(chain: fonts.FontChain, tmp_path, text: str = TEXT) -> tuple[Image.Image, dict[str, str]]:
+    runs = chain.runs(text)
     (tmp_path / "test.ass").write_text(
         ass_header(WIDTH, HEIGHT, "ja") + "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,"
         f"{{\\an7\\pos({X},{line_top(runs, EM, BASELINE):.2f})\\bord0}}{ass_runs(chain, runs, EM, 1.0)}\n",
@@ -83,3 +83,16 @@ def test_libass_text_position_matches_pillow(key, tmp_path):
     expected = ink_bounds(render_with_pillow(chain))
     for actual, wanted in zip(ink_bounds(drawn), expected, strict=True):
         assert actual == pytest.approx(wanted, abs=3), (ink_bounds(drawn), expected)
+
+
+@pytest.mark.parametrize("key", FONT_KEYS)
+def test_libass_draws_emoji_with_the_emoji_face(key, tmp_path):
+    chain = fonts.load_font_chains()[key]
+    if chain.faces[-1].postscript_name != fonts.EMOJI_FACE_NAME:
+        if os.environ.get("REQUIRE_EMOJI_FONT") == "1":
+            pytest.fail(f"{fonts.EMOJI_FACE_NAME} is not installed")
+        pytest.skip(f"{fonts.EMOJI_FACE_NAME} is not installed")
+    emoji = chain.faces[-1]
+    drawn, selected = render(chain, tmp_path, "\U0001f600")
+    assert selected.get(ass_font_name(emoji)) == emoji.postscript_name, selected
+    assert ink_bounds(drawn) is not None

@@ -194,3 +194,38 @@ def test_characters_that_extend_a_cluster_add_no_width_and_use_the_previous_face
     text = "a❤\ufe0f\u200ba"
     assert chain.text_width(text, 100) == pytest.approx(60 + 100 + 60)
     assert chain.runs(text) == [(latin, "a"), (symbols, "❤\ufe0f\u200b"), (latin, "a")]
+
+
+SPEC_FACE_NAMES = {name for spec in fonts.CHAIN_SPECS[fonts.platform_key()].values() for name in spec.face_names}
+
+
+@pytest.fixture
+def install_faces(monkeypatch):
+    def install(names: set[str]):
+        monkeypatch.setattr(fonts, "find_faces", lambda wanted: {name: (name, 0) for name in wanted & names})
+        fonts.load_font_chains.cache_clear()
+
+    monkeypatch.setattr(
+        fonts.Face,
+        "load",
+        lambda path, offset: synthetic_face(path, "😀" if path == fonts.EMOJI_FACE_NAME else "あ", 1000),
+    )
+    yield install
+    fonts.load_font_chains.cache_clear()
+
+
+def test_emoji_face_is_the_last_face_of_every_chain(install_faces):
+    install_faces(SPEC_FACE_NAMES | {fonts.EMOJI_FACE_NAME})
+    for chain in fonts.load_font_chains().values():
+        assert chain.faces[-1].postscript_name == fonts.EMOJI_FACE_NAME
+        assert chain.face_for("あ") is chain.faces[0]
+        assert chain.face_for("😀") is chain.faces[-1]
+        assert chain.missing == ()
+        assert not chain.synthetic_bold(chain.faces[-1])
+
+
+def test_chains_do_not_contain_the_emoji_face_when_it_is_not_installed(install_faces):
+    install_faces(SPEC_FACE_NAMES)
+    for chain in fonts.load_font_chains().values():
+        assert fonts.EMOJI_FACE_NAME not in [face.postscript_name for face in chain.faces]
+        assert chain.missing == ()

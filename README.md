@@ -13,6 +13,10 @@ Install the fonts that the official player uses on your platform:
 | Linux    | Noto Sans CJK JP Regular and Bold, Noto Serif CJK JP Regular (`fonts-noto-cjk` on Debian and Ubuntu) |
 | Windows  | Arial, MS PGothic, Yu Gothic Regular, Yu Mincho Regular, SimSun                                      |
 
+To show emoji, also install
+[Noto Emoji](https://fonts.google.com/noto/specimen/Noto+Emoji). libass cannot
+draw color emoji fonts, so emoji are drawn in one color with this font.
+
 ## Install
 
 If yt-dlp is installed with uv or pip, install the plugin in the same

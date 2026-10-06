@@ -34,6 +34,9 @@ class Viewport:
 
 def ass_font_name(face: Face) -> str:
     # Like GDI, libass finds CFF fonts by the PostScript name and TrueType fonts by the full name.
+    # libass with CoreText cannot find variable fonts by the full name. All backends find them by the family name.
+    if face.is_variable:
+        return face.family_name
     return face.postscript_name if face.is_cff else face.full_name
 
 
