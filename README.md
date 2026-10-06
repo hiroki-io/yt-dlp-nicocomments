@@ -84,6 +84,16 @@ Then use the alias instead of the options:
 yt-dlp --nico https://www.nicovideo.jp/watch/sm9
 ```
 
+### Save only the comment track
+
+To save the comment track as an ASS file without the video, use `--write-subs`
+and `--skip-download`:
+
+```sh
+yt-dlp --skip-download --write-subs --use-postprocessor "NicoComments:when=video" \
+  https://www.nicovideo.jp/watch/sm9
+```
+
 ### Burn the comments into the video
 
 To burn the comment track into the video, run this command with an FFmpeg build
