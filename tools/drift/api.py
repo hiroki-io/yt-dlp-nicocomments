@@ -3,7 +3,12 @@ from datetime import datetime
 
 from yt_dlp import YoutubeDL
 
-from yt_dlp_plugins.postprocessor._nicocomments.api import fetch_threads, fetch_watch_data
+from yt_dlp_plugins.postprocessor._nicocomments.api import (
+    WATCH_API_LANGUAGES,
+    CommentAPIError,
+    fetch_threads,
+    fetch_watch_data,
+)
 
 VIDEO_ID = "sm9"
 WATCH_SCHEMA = {
@@ -46,30 +51,47 @@ def check(value, schema, path: str) -> list[str]:
     return []
 
 
+def check_language(ydl, language: str) -> tuple[list[str], int, int]:
+    try:
+        watch = fetch_watch_data(ydl, VIDEO_ID, language)
+    except CommentAPIError as e:
+        return [f"{language}: {e}"], 0, 0
+    path = f"watch({language})"
+    problems = check(watch, WATCH_SCHEMA, path)
+    if problems:
+        return problems, 0, 0
+    actual = watch["comment"]["nvComment"]["params"].get("language")
+    if actual != WATCH_API_LANGUAGES[language]:
+        return [f"{path}.comment.nvComment.params.language is {actual!r}"], 0, 0
+    threads = fetch_threads(ydl, watch["comment"])
+    problems = check(threads, THREADS_SCHEMA, f"threads({language})")
+    if problems:
+        return problems, 0, 0
+    comments = [comment for thread in threads for comment in thread["comments"]]
+    if not any(thread["hasNicoscript"] for thread in watch["comment"]["threads"]):
+        problems.append(f"{language}: no thread of {VIDEO_ID} has hasNicoscript")
+    if not comments:
+        problems.append(f"{language}: {VIDEO_ID} has no comments")
+    for comment in comments:
+        try:
+            datetime.fromisoformat(comment["postedAt"])
+        except ValueError:
+            problems.append(f"{language}: postedAt {comment['postedAt']!r} is not an ISO 8601 date")
+            break
+    return problems, len(threads), len(comments)
+
+
 def main() -> int:
+    problems = []
     with YoutubeDL({"quiet": True}) as ydl:
-        watch = fetch_watch_data(ydl, VIDEO_ID)
-        problems = check(watch, WATCH_SCHEMA, "watch")
-        threads = fetch_threads(ydl, watch["comment"]) if not problems else []
-    problems += check(threads, THREADS_SCHEMA, "threads")
-    comments = [comment for thread in threads if isinstance(thread, dict) for comment in thread.get("comments") or []]
-    if not problems:
-        if not any(thread["hasNicoscript"] for thread in watch["comment"]["threads"]):
-            problems.append(f"no thread of {VIDEO_ID} has hasNicoscript")
-        if not comments:
-            problems.append(f"{VIDEO_ID} has no comments")
-        for comment in comments:
-            try:
-                datetime.fromisoformat(comment["postedAt"])
-            except ValueError:
-                problems.append(f"postedAt {comment['postedAt']!r} is not an ISO 8601 date")
-                break
+        for language in WATCH_API_LANGUAGES:
+            language_problems, threads, comments = check_language(ydl, language)
+            problems += language_problems
+            if not language_problems:
+                print(f"{language}: {threads} threads and {comments} comments match the schema")
     for problem in problems[:50]:
         print(problem)
-    if problems:
-        return 1
-    print(f"{len(threads)} threads and {len(comments)} comments match the schema")
-    return 0
+    return 1 if problems else 0
 
 
 if __name__ == "__main__":
