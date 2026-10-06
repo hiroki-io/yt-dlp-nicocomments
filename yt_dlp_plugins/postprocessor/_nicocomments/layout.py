@@ -1,5 +1,6 @@
 import math
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
@@ -272,8 +273,8 @@ class Stage:
     def run_layer(
         self,
         chats: list[Chat],
-        reverse_ranges: list[tuple[float, float]] = (),
-        refresh_frames: list[float] = (),
+        reverse_ranges: Sequence[tuple[float, float]] = (),
+        refresh_frames: Sequence[float] = (),
     ) -> list[Slot]:
         timed_chats = sorted(
             ((chat_timing(chat, self.content_length_ms), chat) for chat in chats),
@@ -325,7 +326,7 @@ class Stage:
         return result
 
 
-def reverse_toggle_frames(ranges: list[tuple[float, float]]) -> list[tuple[float, bool]]:
+def reverse_toggle_frames(ranges: Sequence[tuple[float, float]]) -> list[tuple[float, bool]]:
     frames = sorted({next_frame_ms(max(0.0, t)) for start, end in ranges for t in (start, end) if math.isfinite(t)})
     toggles = []
     current = False
