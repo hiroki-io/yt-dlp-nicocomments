@@ -349,6 +349,15 @@
       ],
       "members": []
     },
+    "aiCommentColor": {
+      "hash": "74e239b55cc4c83e9045beb21f00493ab7556ca9909fc60247db06e111355bef",
+      "units": [
+        "aiCommentStagingFilter 74e239b55cc4c83e"
+      ],
+      "members": [
+        "color 9f29373eed00a313"
+      ]
+    },
     "reverseToggle": {
       "hash": "a204d790a7da1c041f9788b9b4d043c44e340e8d2608c03b178df8fb79d20cea",
       "units": [

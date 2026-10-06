@@ -37,6 +37,7 @@ PREMIUM_COLORS = {
     "black2": "666666",
 }
 COLORS = BASIC_COLORS | PREMIUM_COLORS
+AI_COMMENT_COLOR = "DCDCDC"
 COLOR_CODE = re.compile(r"#[0-9a-f]{6}")
 # The official player treats any 6 alphanumeric characters as a color code when it checks command kinds.
 COLOR_CODE_COMMAND = re.compile(r"#[a-z0-9]{6}", re.IGNORECASE)
@@ -104,7 +105,7 @@ class Chat:
             live="_live" in commands,
             position=position or "naka",
             size=size or "medium",
-            color=color or COLORS["white"],
+            color=AI_COMMENT_COLOR if fork == "ai" else color or COLORS["white"],
             font_key=font_key or "defont",
             at_seconds=at,
         )

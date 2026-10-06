@@ -33,6 +33,7 @@ const ROOTS: Record<string, Anchor> = {
   commentFilters: { contains: ["filterCommentQueue", "$fork", "owner", "updatedState"] },
   reverseRanges: { contains: ["reverseTimeRangesForOwner", "reverseTimeRangesForNonOwner", "targetThreads"] },
   layerKind: { contains: ["$isVideoThread", "ai"] },
+  aiCommentColor: { name: "aiCommentStagingFilter" },
   reverseToggle: { name: "nicoScriptSafeStateUpdate" },
   layerEvents: { name: "registerLayerProcessorEvents" },
   rendererRefresh: { name: "refreshCommentsByTarget" },

@@ -41,6 +41,11 @@ def test_parse_ignores_at_commands_of_viewer_comments():
     assert chat(commands=["@5"], fork="owner").at_seconds == 5.0
 
 
+def test_parse_uses_the_ai_comment_color_for_ai_comments():
+    assert chat(commands=["red"], fork="ai").color == "DCDCDC"
+    assert chat(fork="ai").color == "DCDCDC"
+
+
 def test_allowed_commands_drop_premium_colors_of_non_premium_users():
     assert allowed_commands({"commands": ["red2", "Blue", "#00ff00", "big"]}) == ["Blue", "big"]
     assert allowed_commands({"commands": ["Red2", "#00FF00"], "isPremium": True}) == ["Red2", "#00FF00"]
