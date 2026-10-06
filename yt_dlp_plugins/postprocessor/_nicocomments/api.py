@@ -4,10 +4,9 @@ import time
 from yt_dlp.networking.exceptions import HTTPError, RequestError
 from yt_dlp.utils import update_url_query
 
-from .comments import Chat, CommentLayer, FetchedComments, allowed_commands, is_script_body
+from .assemble import assemble_comments
+from .comments import FetchedComments
 from .fetch import fetch_bytes
-from .filters import apply_owner_ngs
-from .nicoscript import Nicoscripts
 
 API_HEADERS = {"X-Frontend-Id": "6", "X-Frontend-Version": "0"}
 WATCH_API_LANGUAGES = {"ja": "ja-jp", "en": "en-us", "zh": "zh-tw"}
@@ -44,7 +43,8 @@ def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
 
 def fetch_comments(ydl, video_id: str, language: str = "ja") -> FetchedComments:
     try:
-        return _fetch_comments(ydl, video_id, language)
+        comment = fetch_watch_data(ydl, video_id, language)["comment"]
+        return assemble_comments(comment, fetch_threads(ydl, comment))
     except RequestError as e:
         raise CommentAPIError(f"failed to load comments: {e}") from e
     except (AttributeError, KeyError, TypeError, ValueError) as e:
@@ -65,50 +65,3 @@ def fetch_threads(ydl, comment: dict) -> list[dict]:
             "X-Client-Os-Type": "others",
         },
     )["data"]["threads"]
-
-
-def _fetch_comments(ydl, video_id: str, language: str) -> FetchedComments:
-    comment = fetch_watch_data(ydl, video_id, language)["comment"]
-    threads = fetch_threads(ydl, comment)
-
-    script_threads = {
-        (str(thread["id"]), thread["forkLabel"])
-        for thread in comment.get("threads") or []
-        if thread.get("hasNicoscript")
-    }
-    scripts = Nicoscripts.parse(
-        [
-            raw
-            for thread in threads
-            if (str(thread["id"]), thread["fork"]) in script_threads
-            for raw in thread["comments"]
-        ]
-    )
-    layers = {}
-    for layer in comment["layers"]:
-        is_owner = any(thread_id["forkLabel"] == "owner" for thread_id in layer["threadIds"])
-        layers[layer["index"]] = CommentLayer(
-            layer["index"], layer["isTranslucent"], [], scripts.reverse_ranges(is_owner)
-        )
-    thread_layers = {
-        (str(thread_id["id"]), thread_id["forkLabel"]): layer["index"]
-        for layer in comment["layers"]
-        for thread_id in layer["threadIds"]
-    }
-    owner_ngs = (comment.get("ng") or {}).get("owner") or []
-    for thread in threads:
-        index = thread_layers.get((str(thread["id"]), thread["fork"]))
-        if index is None:
-            continue
-        is_owner = thread["fork"] == "owner"
-        for raw in thread["comments"]:
-            body = raw.get("body") or ""
-            # The official player hides owner scripts before it applies @置換.
-            if is_owner and is_script_body(body):
-                continue
-            if not is_owner and (body := apply_owner_ngs(body, owner_ngs)) is None:
-                continue
-            body, commands = scripts.apply({**raw, "body": body}, allowed_commands(raw), is_owner)
-            layers[index].chats.append(Chat.parse({**raw, "body": body, "commands": commands}, thread["fork"]))
-    ng_score_disabled = bool(((comment.get("ng") or {}).get("ngScore") or {}).get("isDisabled"))
-    return FetchedComments(list(layers.values()), ng_score_disabled)
