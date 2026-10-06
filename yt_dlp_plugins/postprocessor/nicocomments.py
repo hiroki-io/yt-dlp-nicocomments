@@ -95,7 +95,7 @@ class NicoCommentsPP(PostProcessor):
             f"{self._language}-comments": {
                 "ext": "ass",
                 "name": "Comments",
-                "data": build_ass(slot_layers, width, height, self._opacity),
+                "data": build_ass(slot_layers, width, height, self._opacity, self._language),
             },
             **other_subtitles,
         }

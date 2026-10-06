@@ -114,9 +114,11 @@ def ass_runs(chain: FontChain, runs: list[tuple[Face, str]], em: float, video_sc
     return "".join(parts)
 
 
-def ass_header(width: int, height: int) -> str:
+def ass_header(width: int, height: int, language: str) -> str:
+    # VLC reads Language and prefers it to the language in the file name.
     return f"""[Script Info]
 ScriptType: v4.00+
+Language: {language}
 PlayResX: {width}
 PlayResY: {height}
 WrapStyle: 2
@@ -136,7 +138,7 @@ def paint_order(slots: list[Slot]) -> list[Slot]:
     return sorted(slots, key=lambda slot: (slot.chat.vpos_ms // 10, slot.chat.no))
 
 
-def build_ass(layers: list[SlotLayer], width: int, height: int, opacity: float) -> str:
+def build_ass(layers: list[SlotLayer], width: int, height: int, opacity: float, language: str) -> str:
     viewport = Viewport.for_video(width, height)
     video_scale = height / viewport.height
     top_index = max((layer.index for layer in layers), default=0)
@@ -145,4 +147,4 @@ def build_ass(layers: list[SlotLayer], width: int, height: int, opacity: float) 
         for slot in paint_order(layer.slots):
             slot_opacity = comment_opacity(slot.chat, layer.translucent) * opacity
             events += slot_events(slot, viewport, video_scale, top_index - layer.index, slot_opacity)
-    return ass_header(width, height) + "\n".join(events) + "\n"
+    return ass_header(width, height, language) + "\n".join(events) + "\n"

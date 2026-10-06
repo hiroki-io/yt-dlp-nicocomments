@@ -102,8 +102,12 @@ def test_build_ass_sorts_events_by_layer_and_paint_order():
         SlotLayer(0, False, [make_slot(body="d", vpos_ms=500), make_slot(body="c", vpos_ms=0)]),
         SlotLayer(2, False, [make_slot(body="b", no=2), make_slot(body="a", no=1)]),
     ]
-    ass = build_ass(layers, 1920, 1080, 1.0)
+    ass = build_ass(layers, 1920, 1080, 1.0, "ja")
     assert dialogue_layers(ass) == [(0, "a"), (0, "b"), (2, "c"), (2, "d")]
+
+
+def test_build_ass_writes_the_language_in_the_script_info():
+    assert "\nLanguage: en\n" in build_ass([], 1920, 1080, 1.0, "en").split("[V4+ Styles]")[0]
 
 
 def test_ass_time_formats_centiseconds_as_h_mm_ss_cc():

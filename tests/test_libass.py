@@ -38,7 +38,7 @@ pytestmark = pytest.mark.skipif(
 def render(chain: fonts.FontChain, tmp_path) -> tuple[Image.Image, dict[str, str]]:
     runs = chain.runs(TEXT)
     (tmp_path / "test.ass").write_text(
-        ass_header(WIDTH, HEIGHT) + "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,"
+        ass_header(WIDTH, HEIGHT, "ja") + "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,"
         f"{{\\an7\\pos({X},{line_top(runs, EM, BASELINE):.2f})\\bord0}}{ass_runs(chain, runs, EM, 1.0)}\n",
         encoding="utf-8",
     )
