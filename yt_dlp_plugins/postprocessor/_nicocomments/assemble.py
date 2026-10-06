@@ -1,9 +1,9 @@
-from .comments import Chat, CommentLayer, FetchedComments, allowed_commands, is_script_body
+from .comments import Chat, CommentLayer, VideoComments, allowed_commands, is_script_body
 from .filters import apply_owner_ngs
 from .nicoscript import Nicoscripts
 
 
-def assemble_comments(comment: dict, threads: list[dict]) -> FetchedComments:
+def assemble_comments(comment: dict, threads: list[dict]) -> VideoComments:
     script_threads = {
         (str(thread["id"]), thread["forkLabel"])
         for thread in comment.get("threads") or []
@@ -44,4 +44,4 @@ def assemble_comments(comment: dict, threads: list[dict]) -> FetchedComments:
             body, commands = scripts.apply({**raw, "body": body}, allowed_commands(raw), is_owner)
             layers[index].chats.append(Chat.parse({**raw, "body": body, "commands": commands}, thread["fork"]))
     ng_score_disabled = bool(((comment.get("ng") or {}).get("ngScore") or {}).get("isDisabled"))
-    return FetchedComments(list(layers.values()), ng_score_disabled)
+    return VideoComments(list(layers.values()), ng_score_disabled)

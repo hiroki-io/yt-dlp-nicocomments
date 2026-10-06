@@ -39,11 +39,11 @@ def test_threads_are_grouped_into_layers_by_id_and_fork():
         thread("2", "owner", comment(5)),
         thread("3", "main", comment(6)),
     ]
-    fetched = assemble_comments(watch_comment(), threads)
-    assert [(layer.index, [chat.no for chat in layer.chats]) for layer in fetched.layers] == [(0, [1]), (1, [2, 3, 4])]
-    assert fetched.layers[0].chats[0].is_owner
-    assert not fetched.layers[1].chats[0].is_owner
-    assert not fetched.ng_score_disabled
+    comments = assemble_comments(watch_comment(), threads)
+    assert [(layer.index, [chat.no for chat in layer.chats]) for layer in comments.layers] == [(0, [1]), (1, [2, 3, 4])]
+    assert comments.layers[0].chats[0].is_owner
+    assert not comments.layers[1].chats[0].is_owner
+    assert not comments.ng_score_disabled
 
 
 def test_ng_score_is_disabled_when_the_watch_api_disables_it():

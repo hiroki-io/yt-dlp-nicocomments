@@ -128,6 +128,6 @@ class CommentLayer:
 
 
 @dataclass
-class FetchedComments:
+class VideoComments:
     layers: list[CommentLayer]
     ng_score_disabled: bool

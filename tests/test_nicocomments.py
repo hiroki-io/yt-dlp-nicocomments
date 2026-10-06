@@ -5,7 +5,7 @@ from conftest import FakeDownloader
 from yt_dlp.networking.exceptions import TransportError
 
 from yt_dlp_plugins.postprocessor import nicocomments
-from yt_dlp_plugins.postprocessor._nicocomments.comments import CommentLayer, FetchedComments
+from yt_dlp_plugins.postprocessor._nicocomments.comments import CommentLayer, VideoComments
 from yt_dlp_plugins.postprocessor.nicocomments import NicoCommentsPP
 
 
@@ -37,7 +37,7 @@ def fake_fonts_and_comments(monkeypatch):
 
     def fetch_comments(ydl, video_id, language):
         languages.append(language)
-        return FetchedComments([CommentLayer(0, False, [])], False)
+        return VideoComments([CommentLayer(0, False, [])], False)
 
     monkeypatch.setattr(nicocomments, "load_font_chains", lambda: {"defont": CoveringChain()})
     monkeypatch.setattr(nicocomments, "fetch_comments", fetch_comments)

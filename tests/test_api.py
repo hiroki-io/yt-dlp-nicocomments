@@ -52,8 +52,8 @@ def thread(thread_id, fork, *nos):
 
 def test_comments_are_built_from_the_watch_data_and_threads():
     threads = {"data": {"threads": [thread("1", "owner", 1), thread("2", "main", 2)]}}
-    fetched = fetch_comments(FakeDownloader([watch_api(), threads]), "sm9")
-    assert [[chat.no for chat in layer.chats] for layer in fetched.layers] == [[1], [2]]
+    comments = fetch_comments(FakeDownloader([watch_api(), threads]), "sm9")
+    assert [[chat.no for chat in layer.chats] for layer in comments.layers] == [[1], [2]]
 
 
 def test_threads_are_requested_with_the_nv_comment_params_and_headers():

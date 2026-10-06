@@ -5,7 +5,7 @@ from yt_dlp.networking.exceptions import HTTPError, RequestError
 from yt_dlp.utils import update_url_query
 
 from .assemble import assemble_comments
-from .comments import FetchedComments
+from .comments import VideoComments
 from .fetch import fetch_bytes
 
 API_HEADERS = {"X-Frontend-Id": "6", "X-Frontend-Version": "0"}
@@ -41,7 +41,7 @@ def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
     raise CommentAPIError(f"failed to load the watch API: {detail}") from cause
 
 
-def fetch_comments(ydl, video_id: str, language: str = "ja") -> FetchedComments:
+def fetch_comments(ydl, video_id: str, language: str = "ja") -> VideoComments:
     try:
         comment = fetch_watch_data(ydl, video_id, language)["comment"]
         return assemble_comments(comment, fetch_threads(ydl, comment))
