@@ -1,7 +1,7 @@
 import random
 
 from .comments import VideoComments
-from .filters import effective_ng_score_threshold, visible_chats
+from .filters import visible_chats
 from .fonts import FontChain
 from .layout import SlotLayer, Stage, reverse_toggle_frames
 
@@ -14,7 +14,8 @@ def layout_comments(
     seed: str,
 ) -> list[SlotLayer]:
     stage = Stage(content_length_ms, font_chains, random.Random(seed))
-    ng_score_threshold = effective_ng_score_threshold(comments, ng_score_threshold)
+    if comments.ng_score_disabled:
+        ng_score_threshold = None
     refresh_frames = sorted(
         {frame for layer in comments.layers for frame, _ in reverse_toggle_frames(layer.reverse_ranges)}
     )

@@ -1,10 +1,9 @@
 import pytest
 
-from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat, VideoComments
+from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat
 from yt_dlp_plugins.postprocessor._nicocomments.filters import (
     NG_SCORE_THRESHOLDS,
     apply_owner_ngs,
-    effective_ng_score_threshold,
     is_hidden,
     visible_chats,
 )
@@ -39,12 +38,6 @@ def test_visible_chats_removes_hidden_comments():
 
 def test_invisible_command_hides_the_comment():
     assert is_hidden(chat(commands=["invisible"]), None)
-
-
-@pytest.mark.parametrize(("ng_score_disabled", "expected"), [(False, -4800), (True, None)])
-def test_ng_score_disabled_by_the_api_removes_the_threshold(ng_score_disabled, expected):
-    comments = VideoComments([], ng_score_disabled)
-    assert effective_ng_score_threshold(comments, NG_SCORE_THRESHOLDS["medium"]) == expected
 
 
 @pytest.mark.parametrize(

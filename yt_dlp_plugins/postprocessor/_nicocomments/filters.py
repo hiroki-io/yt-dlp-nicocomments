@@ -1,12 +1,8 @@
 import re
 
-from .comments import Chat, VideoComments
+from .comments import Chat
 
 NG_SCORE_THRESHOLDS = {"high": -1000, "medium": -4800, "low": -10000, "none": None}
-
-
-def effective_ng_score_threshold(comments: VideoComments, ng_score_threshold: int | None) -> int | None:
-    return None if comments.ng_score_disabled else ng_score_threshold
 
 
 def is_hidden(chat: Chat, ng_score_threshold: int | None) -> bool:
