@@ -5,7 +5,11 @@ import pytest
 from PIL import ImageFont
 
 from yt_dlp_plugins.postprocessor._nicocomments import fetch, fonts
-from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS
+from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS, Chat
+
+
+def make_chat(*, no=1, vpos_ms=0, score=0, body="comment", commands=(), fork="main") -> Chat:
+    return Chat.parse(no=no, vpos_ms=vpos_ms, score=score, body=body, commands=list(commands), fork=fork)
 
 
 class FixedWidthChain:

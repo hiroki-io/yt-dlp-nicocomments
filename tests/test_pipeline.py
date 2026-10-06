@@ -1,12 +1,13 @@
 import pytest
+from conftest import make_chat
 
-from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat, CommentLayer, VideoComments
+from yt_dlp_plugins.postprocessor._nicocomments.comments import CommentLayer, VideoComments
 from yt_dlp_plugins.postprocessor._nicocomments.filters import NG_SCORE_THRESHOLDS
 from yt_dlp_plugins.postprocessor._nicocomments.pipeline import layout_comments
 
 
 def chat(no, score=0, fork="main"):
-    return Chat.parse(no=no, vpos_ms=1000 * no, score=score, body="comment", commands=[], fork=fork)
+    return make_chat(no=no, vpos_ms=1000 * no, score=score, fork=fork)
 
 
 def layout(comments, chains):

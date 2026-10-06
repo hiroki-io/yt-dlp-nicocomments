@@ -1,16 +1,16 @@
+from functools import partial
+
 import pytest
+from conftest import make_chat
 
 from yt_dlp_plugins.postprocessor._nicocomments.comments import (
-    Chat,
     allowed_commands,
     color_value,
     command_kind,
     is_script_body,
 )
 
-
-def chat(body="comment", commands=(), fork="owner"):
-    return Chat.parse(no=1, vpos_ms=10000, score=0, body=body, commands=list(commands), fork=fork)
+chat = partial(make_chat, fork="owner")
 
 
 def test_parse_takes_the_first_command_of_each_kind():

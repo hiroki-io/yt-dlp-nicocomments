@@ -1,9 +1,10 @@
 import math
 import random
+from functools import partial
 
 import pytest
+from conftest import make_chat
 
-from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat
 from yt_dlp_plugins.postprocessor._nicocomments.layout import (
     BASE_WIDTH,
     SLOT_COUNT,
@@ -13,9 +14,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.layout import (
     chat_timing,
 )
 
-
-def chat(vpos_ms=10000, body="comment", commands=(), no=1):
-    return Chat.parse(no=no, vpos_ms=vpos_ms, score=0, body=body, commands=list(commands), fork="owner")
+chat = partial(make_chat, vpos_ms=10000, fork="owner")
 
 
 def make_stage(font_chains):
@@ -65,13 +64,13 @@ def test_bottom_comments_stack_upward(fixed_width_chains):
 
 def test_fixed_comments_can_overlap_for_200_ms(fixed_width_chains):
     stage = make_stage(fixed_width_chains)
-    first, second = stage.run_layer([chat(0, commands=["ue"], no=1), chat(2800, commands=["ue"], no=2)])
+    first, second = stage.run_layer([chat(vpos_ms=0, commands=["ue"], no=1), chat(vpos_ms=2800, commands=["ue"], no=2)])
     assert first.y == second.y == 0
 
 
 def test_fixed_comments_that_overlap_for_more_than_200_ms_are_placed_in_different_rows(fixed_width_chains):
     stage = make_stage(fixed_width_chains)
-    first, second = stage.run_layer([chat(0, commands=["ue"], no=1), chat(2700, commands=["ue"], no=2)])
+    first, second = stage.run_layer([chat(vpos_ms=0, commands=["ue"], no=1), chat(vpos_ms=2700, commands=["ue"], no=2)])
     assert second.y == pytest.approx(first.height)
 
 
