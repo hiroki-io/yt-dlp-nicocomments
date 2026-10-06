@@ -11,12 +11,13 @@ from yt_dlp_plugins.postprocessor._nicocomments.api import (
 )
 
 VIDEO_ID = "sm9"
+OWNER_NG_VIDEO_ID = "sm1715919"
 WATCH_SCHEMA = {
     "comment": {
         "nvComment": {"server": str, "params": dict, "threadKey": str},
         "threads": [{"id": int, "forkLabel": str, "hasNicoscript": bool}],
         "layers": [{"index": int, "isTranslucent": bool, "threadIds": [{"id": int, "forkLabel": str}]}],
-        "ng": {"ngScore": {"isDisabled": bool}},
+        "ng": {"ngScore": {"isDisabled": bool}, "owner": [{"source": str, "destination": str}]},
     }
 }
 COMMENT_SCHEMA = {
@@ -81,9 +82,21 @@ def check_language(ydl, language: str) -> tuple[list[str], int, int]:
     return problems, len(threads), len(comments)
 
 
+def check_owner_ngs(ydl) -> list[str]:
+    try:
+        watch = fetch_watch_data(ydl, OWNER_NG_VIDEO_ID)
+    except CommentAPIError as e:
+        return [f"{OWNER_NG_VIDEO_ID}: {e}"]
+    problems = check(watch, WATCH_SCHEMA, f"watch({OWNER_NG_VIDEO_ID})")
+    if not problems and not watch["comment"]["ng"]["owner"]:
+        problems.append(f"{OWNER_NG_VIDEO_ID} has no owner NG settings")
+    return problems
+
+
 def main() -> int:
     problems = []
     with YoutubeDL({"quiet": True}) as ydl:
+        problems += check_owner_ngs(ydl)
         for language in WATCH_API_LANGUAGES:
             language_problems, threads, comments = check_language(ydl, language)
             problems += language_problems

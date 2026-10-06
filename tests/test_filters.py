@@ -3,6 +3,7 @@ import pytest
 from yt_dlp_plugins.postprocessor._nicocomments.comments import Chat, FetchedComments
 from yt_dlp_plugins.postprocessor._nicocomments.filters import (
     NG_SCORE_THRESHOLDS,
+    apply_owner_ngs,
     effective_ng_score_threshold,
     is_hidden,
     visible_chats,
@@ -44,3 +45,23 @@ def test_invisible_command_hides_the_comment():
 def test_ng_score_disabled_by_the_api_removes_the_threshold(ng_score_disabled, expected):
     fetched = FetchedComments([], ng_score_disabled)
     assert effective_ng_score_threshold(fetched, NG_SCORE_THRESHOLDS["medium"]) == expected
+
+
+@pytest.mark.parametrize(
+    ("body", "ngs", "expected"),
+    [
+        ("Up up UP", [{"source": "up", "destination": "x"}], "x x x"),
+        ("keep", [{"source": "up", "destination": "x"}], "keep"),
+        ("İab", [{"source": "a", "destination": "x"}], "İxb"),
+        ("a", [{"source": "a", "destination": r"\1"}], r"\1"),
+        ("an ng word", [{"source": "*ng", "destination": "hidden"}], "hidden"),
+        ("an NG word", [{"source": "*ng", "destination": "hidden"}], "an NG word"),
+        ("", [{"source": "*", "destination": "x"}], ""),
+        ("aa", [{"source": "aa", "destination": "a"}], "a"),
+        ("ab", [{"source": "a", "destination": "b"}, {"source": "bb", "destination": "c"}], "c"),
+        ("ab", [{"source": "a", "destination": "b"}, {"source": "bb", "destination": "ab"}], "bb"),
+        ("comment", [{"source": "", "destination": "x"}], None),
+    ],
+)
+def test_apply_owner_ngs(body, ngs, expected):
+    assert apply_owner_ngs(body, ngs) == expected

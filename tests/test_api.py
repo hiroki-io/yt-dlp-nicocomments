@@ -169,3 +169,27 @@ def test_owner_scripts_are_removed_before_replacement():
     }
     (owner_layer, _) = fetch_comments(FakeDownloader([api, threads]), "sm9").layers
     assert [chat.lines for chat in owner_layer.chats] == [["@b"]]
+
+
+def test_owner_ngs_apply_to_viewer_comments_before_nicoscripts():
+    api = watch_api()
+    api["data"]["comment"]["threads"] = [{"id": 1, "forkLabel": "owner", "hasNicoscript": True}]
+    api["data"]["comment"]["ng"]["owner"] = [{"source": "a", "destination": "b"}]
+    threads = {
+        "data": {
+            "threads": [
+                {
+                    "id": "1",
+                    "fork": "owner",
+                    "comments": [
+                        {"no": 1, "vposMs": 0, "body": "@置換 b c", "commands": []},
+                        {"no": 2, "vposMs": 1000, "body": "a", "commands": []},
+                    ],
+                },
+                {"id": "2", "fork": "main", "comments": [{"no": 3, "vposMs": 1000, "body": "A", "commands": []}]},
+            ]
+        }
+    }
+    owner_layer, main_layer = fetch_comments(FakeDownloader([api, threads]), "sm9").layers
+    assert owner_layer.chats[0].lines == ["a"]
+    assert main_layer.chats[0].lines == ["c"]
