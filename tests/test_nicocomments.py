@@ -77,6 +77,15 @@ def test_ext_changes_to_mkv_without_merge_output_format(fake_fonts_and_comments)
     assert info["ext"] == "mkv"
 
 
+@pytest.mark.parametrize("merge_output_format", [None, "mp4"])
+def test_skip_download_keeps_the_extension(fake_fonts_and_comments, merge_output_format):
+    ydl = downloader(skip_download=True, merge_output_format=merge_output_format)
+    _, info = NicoCommentsPP(ydl).run(video_info())
+    assert info["ext"] == "mp4"
+    assert ydl.warnings == []
+    assert "ja-comments" in info["requested_subtitles"]
+
+
 def test_other_extractors_are_skipped():
     info = {"extractor_key": "Youtube"}
     assert NicoCommentsPP(downloader()).run(info) == ([], info)

@@ -125,7 +125,7 @@ class NicoCommentsPP(PostProcessor):
     def _select_ass_container(self, info):
         # yt-dlp creates the output file name after the video stage, and the merger
         # selects the container from the extension.
-        if not info.get("requested_formats") or info.get("ext") == ASS_CONTAINER:
+        if self.get_param("skip_download") or not info.get("requested_formats") or info.get("ext") == ASS_CONTAINER:
             return
         if self.get_param("merge_output_format") is not None:
             self.report_warning(f"Comments can lose their layout because {info['ext']} cannot hold ASS subtitles")
