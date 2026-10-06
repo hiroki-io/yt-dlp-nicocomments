@@ -23,6 +23,7 @@ EMBED_OUTPUT_ARG_KEYS = [
 ]
 DEFAULT_DISPOSITION_ARGS = ["-disposition:s:0", "default"]
 ASS_CONTAINER = "mkv"
+LANGUAGE_NAMES = {"ja": "Japanese", "en": "English", "zh": "Chinese"}
 BOOLEAN_VALUES = {"true": True, "yes": True, "1": True, "false": False, "no": False, "0": False}
 
 
@@ -43,6 +44,13 @@ def parse_choice_option(name: str, value: str, choices: Collection[str]):
     return choices[key] if isinstance(choices, Mapping) else key
 
 
+def parse_languages_option(value: str) -> list[str]:
+    languages = [
+        parse_choice_option("lang", language.strip(), WATCH_API_LANGUAGES.keys()) for language in value.split(",")
+    ]
+    return list(dict.fromkeys(languages))
+
+
 class NicoCommentsPP(PostProcessor):
     def __init__(self, downloader=None, opacity="1", default="true", nglevel="medium", lang="ja", **kwargs):
         if kwargs:
@@ -51,7 +59,7 @@ class NicoCommentsPP(PostProcessor):
         self._opacity = parse_opacity_option(opacity)
         self._default = parse_choice_option("default", default, BOOLEAN_VALUES)
         self._ng_score_threshold = parse_choice_option("nglevel", nglevel, NG_SCORE_THRESHOLDS)
-        self._language = parse_choice_option("lang", lang, WATCH_API_LANGUAGES.keys())
+        self._languages = parse_languages_option(lang)
         self._checked_fonts = False
 
     def run(self, info):
@@ -71,34 +79,33 @@ class NicoCommentsPP(PostProcessor):
 
         try:
             font_chains = load_font_chains()
-            fetched = fetch_comments(self._downloader, info["id"], self._language)
+            fetched = {language: fetch_comments(self._downloader, info["id"], language) for language in self._languages}
         except (CommentAPIError, FontError) as e:
             raise PostProcessingError(str(e)) from e
 
         if not self._checked_fonts:
             self._warn_about_missing_japanese_fonts(font_chains)
             self._checked_fonts = True
-        slot_layers = layout_comments(
-            fetched,
-            font_chains,
-            self._content_length_ms(info),
-            self._ng_score_threshold,
-            info["id"],
-        )
-        self.to_screen(f"Laid out {sum(len(slot_layer.slots) for slot_layer in slot_layers)} comments")
+        content_length_ms = self._content_length_ms(info)
+        comment_subtitles = {}
+        for language, comments in fetched.items():
+            slot_layers = layout_comments(
+                comments, font_chains, content_length_ms, self._ng_score_threshold, info["id"]
+            )
+            # yt-dlp derives the language tag from the first two letters of the subtitle key.
+            key = f"{language}-comments"
+            name = f"{LANGUAGE_NAMES[language]} comments"
+            self.to_screen(f"Laid out {sum(len(slot_layer.slots) for slot_layer in slot_layers)} {name}")
+            comment_subtitles[key] = {
+                "ext": "ass",
+                "name": name,
+                "data": build_ass(slot_layers, width, height, self._opacity, language),
+            }
 
         other_subtitles = dict(info.get("requested_subtitles") or {})
         other_subtitles.pop(JSON_SUBTITLE_LANG, None)
-        # FFmpegEmbedSubtitlePP embeds the subtitles in this order, so the comments become the track s:0.
-        info["requested_subtitles"] = {
-            # yt-dlp derives the language tag from the first two letters of the subtitle key.
-            f"{self._language}-comments": {
-                "ext": "ass",
-                "name": "Comments",
-                "data": build_ass(slot_layers, width, height, self._opacity, self._language),
-            },
-            **other_subtitles,
-        }
+        # FFmpegEmbedSubtitlePP embeds the subtitles in this order, so the first comments become the track s:0.
+        info["requested_subtitles"] = {**comment_subtitles, **other_subtitles}
         if self._default:
             self._make_first_subtitle_track_default()
         return [], info

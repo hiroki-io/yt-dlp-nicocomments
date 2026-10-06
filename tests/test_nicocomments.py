@@ -53,6 +53,7 @@ def fake_fonts_and_comments(monkeypatch):
         ({"default": "maybe"}, "default must be one of true, yes, 1, false, no, 0, not maybe"),
         ({"nglevel": "max"}, "nglevel must be one of high, medium, low, none, not max"),
         ({"lang": "zh-tw"}, "lang must be one of ja, en, zh, not zh-tw"),
+        ({"lang": "ja,"}, "lang must be one of ja, en, zh, not "),
         ({"opacty": "0.8", "fontsize": "2"}, "unknown options: opacty, fontsize"),
     ],
 )
@@ -86,6 +87,15 @@ def test_lang_selects_the_comment_language_and_subtitle_key(fake_fonts_and_comme
     _, info = NicoCommentsPP(downloader(), lang=lang).run(video_info())
     assert fake_fonts_and_comments == [language]
     assert list(info["requested_subtitles"]) == [key]
+
+
+def test_lang_with_multiple_languages_adds_a_track_for_each_language_in_order(fake_fonts_and_comments):
+    info = video_info(requested_subtitles={"en": {"ext": "vtt"}})
+    _, info = NicoCommentsPP(downloader(), lang="en, ja,en").run(info)
+    assert fake_fonts_and_comments == ["en", "ja"]
+    assert list(info["requested_subtitles"]) == ["en-comments", "ja-comments", "en"]
+    assert info["requested_subtitles"]["en-comments"]["name"] == "English comments"
+    assert info["requested_subtitles"]["ja-comments"]["name"] == "Japanese comments"
 
 
 def test_ext_changes_to_mkv_without_merge_output_format(fake_fonts_and_comments):
