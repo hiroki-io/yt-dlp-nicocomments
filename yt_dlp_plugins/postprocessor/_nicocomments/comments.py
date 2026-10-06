@@ -38,6 +38,8 @@ PREMIUM_COLORS = {
 }
 COLORS = BASIC_COLORS | PREMIUM_COLORS
 AI_COMMENT_COLOR = "DCDCDC"
+OWNER_FORK = "owner"
+AI_FORK = "ai"
 COLOR_CODE = re.compile(r"#[0-9a-f]{6}")
 # The official player treats any 6 ASCII letters or digits as a color code when it checks command kinds.
 COLOR_CODE_COMMAND = re.compile(r"#[a-zA-Z0-9]{6}")
@@ -101,7 +103,7 @@ class Chat:
     @classmethod
     def parse(cls, *, no: int, vpos_ms: int, score: int, body: str, commands: list[str], fork: str) -> "Chat":
         position = size = color = font_key = at = None
-        is_owner = fork == "owner"
+        is_owner = fork == OWNER_FORK
         for command in commands:
             lower = command.lower()
             kind = command_kind(command, premium=True)
@@ -129,7 +131,7 @@ class Chat:
             live="_live" in commands,
             position=position or "naka",
             size=size or "medium",
-            color=AI_COMMENT_COLOR if fork == "ai" else color or COLORS["white"],
+            color=AI_COMMENT_COLOR if fork == AI_FORK else color or COLORS["white"],
             font_key=font_key or "defont",
             at_seconds=at,
         )

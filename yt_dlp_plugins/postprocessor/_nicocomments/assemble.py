@@ -1,39 +1,38 @@
-from .comments import Chat, CommentLayer, VideoComments, allowed_commands, is_script_body
+from .comments import OWNER_FORK, Chat, CommentLayer, VideoComments, allowed_commands, is_script_body
 from .filters import apply_owner_ngs
 from .nicoscript import Nicoscripts
 
 
+def thread_key(thread: dict) -> tuple[str, str]:
+    return str(thread["id"]), thread["fork"]
+
+
+def watch_thread_key(thread: dict) -> tuple[str, str]:
+    return str(thread["id"]), thread["forkLabel"]
+
+
 def assemble_comments(comment: dict, threads: list[dict]) -> VideoComments:
     script_threads = {
-        (str(thread["id"]), thread["forkLabel"])
-        for thread in comment.get("threads") or []
-        if thread.get("hasNicoscript")
+        watch_thread_key(thread) for thread in comment.get("threads") or [] if thread.get("hasNicoscript")
     }
     scripts = Nicoscripts.parse(
-        [
-            raw
-            for thread in threads
-            if (str(thread["id"]), thread["fork"]) in script_threads
-            for raw in thread["comments"]
-        ]
+        [raw for thread in threads if thread_key(thread) in script_threads for raw in thread["comments"]]
     )
     layers = {}
     for layer in comment["layers"]:
-        is_owner = any(thread_id["forkLabel"] == "owner" for thread_id in layer["threadIds"])
+        is_owner = any(thread_id["forkLabel"] == OWNER_FORK for thread_id in layer["threadIds"])
         layers[layer["index"]] = CommentLayer(
             layer["index"], layer["isTranslucent"], [], scripts.reverse_ranges(is_owner)
         )
     thread_layers = {
-        (str(thread_id["id"]), thread_id["forkLabel"]): layer["index"]
-        for layer in comment["layers"]
-        for thread_id in layer["threadIds"]
+        watch_thread_key(thread_id): layer["index"] for layer in comment["layers"] for thread_id in layer["threadIds"]
     }
     owner_ngs = (comment.get("ng") or {}).get("owner") or []
     for thread in threads:
-        index = thread_layers.get((str(thread["id"]), thread["fork"]))
+        index = thread_layers.get(thread_key(thread))
         if index is None:
             continue
-        is_owner = thread["fork"] == "owner"
+        is_owner = thread["fork"] == OWNER_FORK
         for raw in thread["comments"]:
             body = raw.get("body") or ""
             # The official player hides owner scripts before it applies @置換.
