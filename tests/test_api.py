@@ -91,6 +91,13 @@ def test_watch_data_falls_back_to_the_guest_api():
     assert "/api/watch/v3_guest/sm9?" in ydl.requests[1].url
 
 
+@pytest.mark.parametrize(("args", "language"), [((), "ja-jp"), (("en",), "en-us"), (("zh",), "zh-tw")])
+def test_watch_data_is_requested_in_the_comment_language(args, language):
+    ydl = FakeDownloader([watch_api()])
+    fetch_watch_data(ydl, "sm9", *args)
+    assert ydl.requests[0].url.endswith(f"&i18nLanguage={language}")
+
+
 def test_watch_data_error_message_contains_the_last_status():
     ydl = FakeDownloader([http_error(403), {"meta": {"status": 404}}])
     with pytest.raises(CommentAPIError, match=r"^failed to load the watch API: status 404$"):

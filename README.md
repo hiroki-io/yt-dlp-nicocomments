@@ -64,6 +64,8 @@ Options are passed after the name, separated by semicolons:
 - `nglevel`: hide comments that many users added to their NG lists (`high`,
   `medium`, `low`, or `none`; default: `medium`). `high` hides the most
   comments.
+- `lang`: comment language (`ja`, `en`, or `zh`; default: `ja`). Each language
+  has different comments.
 
 ```sh
 --use-postprocessor "NicoComments:when=video;opacity=0.8"

@@ -1,18 +1,17 @@
 import math
 import optparse
+from collections.abc import Collection, Mapping
 
 from yt_dlp.postprocessor.common import PostProcessor
 from yt_dlp.utils import PostProcessingError, cli_configuration_args
 
-from ._nicocomments.api import CommentAPIError, fetch_comments
+from ._nicocomments.api import WATCH_API_LANGUAGES, CommentAPIError, fetch_comments
 from ._nicocomments.ass import build_ass
 from ._nicocomments.filters import NG_SCORE_THRESHOLDS
 from ._nicocomments.fonts import JAPANESE_SAMPLE, FontChain, FontError, load_font_chains
 from ._nicocomments.hls import PlaylistError, media_duration
 from ._nicocomments.pipeline import layout_comments
 
-# yt-dlp derives the language tag from the first two letters of the subtitle key.
-SUBTITLE_LANG = "ja-comments"
 JSON_SUBTITLE_LANG = "comments"
 # The order in which FFmpegEmbedSubtitlePP looks up --ppa arguments for its output file.
 EMBED_OUTPUT_ARG_KEYS = [
@@ -37,23 +36,22 @@ def parse_opacity_option(value: str) -> float:
     return result
 
 
-def parse_choice_option(name: str, value: str, choices: dict):
-    try:
-        return choices[value.lower()]
-    except KeyError:
-        raise optparse.OptionValueError(
-            f"NicoComments: {name} must be one of {', '.join(choices)}, not {value}"
-        ) from None
+def parse_choice_option(name: str, value: str, choices: Collection[str]):
+    key = value.lower()
+    if key not in choices:
+        raise optparse.OptionValueError(f"NicoComments: {name} must be one of {', '.join(choices)}, not {value}")
+    return choices[key] if isinstance(choices, Mapping) else key
 
 
 class NicoCommentsPP(PostProcessor):
-    def __init__(self, downloader=None, opacity="1", default="true", nglevel="medium", **kwargs):
+    def __init__(self, downloader=None, opacity="1", default="true", nglevel="medium", lang="ja", **kwargs):
         if kwargs:
             raise optparse.OptionValueError(f"NicoComments: unknown options: {', '.join(kwargs)}")
         super().__init__(downloader)
         self._opacity = parse_opacity_option(opacity)
         self._default = parse_choice_option("default", default, BOOLEAN_VALUES)
         self._ng_score_threshold = parse_choice_option("nglevel", nglevel, NG_SCORE_THRESHOLDS)
+        self._language = parse_choice_option("lang", lang, WATCH_API_LANGUAGES.keys())
         self._checked_fonts = False
 
     def run(self, info):
@@ -73,7 +71,7 @@ class NicoCommentsPP(PostProcessor):
 
         try:
             font_chains = load_font_chains()
-            fetched = fetch_comments(self._downloader, info["id"])
+            fetched = fetch_comments(self._downloader, info["id"], self._language)
         except (CommentAPIError, FontError) as e:
             raise PostProcessingError(str(e)) from e
 
@@ -93,7 +91,8 @@ class NicoCommentsPP(PostProcessor):
         other_subtitles.pop(JSON_SUBTITLE_LANG, None)
         # FFmpegEmbedSubtitlePP embeds the subtitles in this order, so the comments become the track s:0.
         info["requested_subtitles"] = {
-            SUBTITLE_LANG: {
+            # yt-dlp derives the language tag from the first two letters of the subtitle key.
+            f"{self._language}-comments": {
                 "ext": "ass",
                 "name": "Comments",
                 "data": build_ass(slot_layers, width, height, self._opacity),

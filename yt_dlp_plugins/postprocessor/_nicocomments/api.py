@@ -2,12 +2,14 @@ import json
 import time
 
 from yt_dlp.networking.exceptions import HTTPError, RequestError
+from yt_dlp.utils import update_url_query
 
 from .comments import Chat, CommentLayer, FetchedComments, allowed_commands, is_script_body
 from .fetch import fetch_bytes
 from .nicoscript import Nicoscripts
 
 API_HEADERS = {"X-Frontend-Id": "6", "X-Frontend-Version": "0"}
+WATCH_API_LANGUAGES = {"ja": "ja-jp", "en": "en-us", "zh": "zh-tw"}
 
 
 class CommentAPIError(Exception):
@@ -19,11 +21,14 @@ def fetch_json(ydl, url: str, data: dict | None = None, headers: dict | None = N
     return json.loads(fetch_bytes(ydl, url, body, headers))
 
 
-def fetch_watch_data(ydl, video_id: str) -> dict:
+def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
     cause = detail = None
     for path in ("v3", "v3_guest"):
         track_id = f"AAAAAAAAAA_{round(time.time() * 1000)}"
-        url = f"https://www.nicovideo.jp/api/watch/{path}/{video_id}?actionTrackId={track_id}"
+        url = update_url_query(
+            f"https://www.nicovideo.jp/api/watch/{path}/{video_id}",
+            {"actionTrackId": track_id, "i18nLanguage": WATCH_API_LANGUAGES[language]},
+        )
         try:
             api = fetch_json(ydl, url, headers=API_HEADERS)
         except HTTPError as e:
@@ -36,9 +41,9 @@ def fetch_watch_data(ydl, video_id: str) -> dict:
     raise CommentAPIError(f"failed to load the watch API: {detail}") from cause
 
 
-def fetch_comments(ydl, video_id: str) -> FetchedComments:
+def fetch_comments(ydl, video_id: str, language: str = "ja") -> FetchedComments:
     try:
-        return _fetch_comments(ydl, video_id)
+        return _fetch_comments(ydl, video_id, language)
     except RequestError as e:
         raise CommentAPIError(f"failed to load comments: {e}") from e
     except (AttributeError, KeyError, TypeError, ValueError) as e:
@@ -61,8 +66,8 @@ def fetch_threads(ydl, comment: dict) -> list[dict]:
     )["data"]["threads"]
 
 
-def _fetch_comments(ydl, video_id: str) -> FetchedComments:
-    comment = fetch_watch_data(ydl, video_id)["comment"]
+def _fetch_comments(ydl, video_id: str, language: str) -> FetchedComments:
+    comment = fetch_watch_data(ydl, video_id, language)["comment"]
     threads = fetch_threads(ydl, comment)
 
     script_threads = {

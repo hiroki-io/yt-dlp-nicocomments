@@ -33,10 +33,15 @@ def downloader(**params):
 
 @pytest.fixture
 def fake_fonts_and_comments(monkeypatch):
+    languages = []
+
+    def fetch_comments(ydl, video_id, language):
+        languages.append(language)
+        return FetchedComments([CommentLayer(0, False, [])], False)
+
     monkeypatch.setattr(nicocomments, "load_font_chains", lambda: {"defont": CoveringChain()})
-    monkeypatch.setattr(
-        nicocomments, "fetch_comments", lambda ydl, video_id: FetchedComments([CommentLayer(0, False, [])], False)
-    )
+    monkeypatch.setattr(nicocomments, "fetch_comments", fetch_comments)
+    return languages
 
 
 @pytest.mark.parametrize(
@@ -47,6 +52,7 @@ def fake_fonts_and_comments(monkeypatch):
         ({"opacity": "1.5"}, "opacity must be a number from 0 to 1, not 1.5"),
         ({"default": "maybe"}, "default must be one of true, yes, 1, false, no, 0, not maybe"),
         ({"nglevel": "max"}, "nglevel must be one of high, medium, low, none, not max"),
+        ({"lang": "zh-tw"}, "lang must be one of ja, en, zh, not zh-tw"),
         ({"opacty": "0.8", "fontsize": "2"}, "unknown options: opacty, fontsize"),
     ],
 )
@@ -70,6 +76,16 @@ def test_comments_are_added_as_the_first_subtitle_track(fake_fonts_and_comments)
     assert list(info["requested_subtitles"]) == ["ja-comments", "en"]
     assert info["requested_subtitles"]["ja-comments"]["ext"] == "ass"
     assert info["requested_subtitles"]["ja-comments"]["data"].startswith("[Script Info]")
+
+
+@pytest.mark.parametrize(
+    ("lang", "language", "key"),
+    [("ja", "ja", "ja-comments"), ("EN", "en", "en-comments"), ("zh", "zh", "zh-comments")],
+)
+def test_lang_selects_the_comment_language_and_subtitle_key(fake_fonts_and_comments, lang, language, key):
+    _, info = NicoCommentsPP(downloader(), lang=lang).run(video_info())
+    assert fake_fonts_and_comments == [language]
+    assert list(info["requested_subtitles"]) == [key]
 
 
 def test_ext_changes_to_mkv_without_merge_output_format(fake_fonts_and_comments):
