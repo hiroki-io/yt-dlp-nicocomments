@@ -69,6 +69,9 @@ yt-dlp --embed-subs --use-postprocessor "NicoComments:when=video" \
   https://www.nicovideo.jp/watch/sm9
 ```
 
+`when=video` is necessary because the plugin must run before yt-dlp writes the
+subtitles.
+
 Options are passed after the name, separated by semicolons:
 
 | Option    | Values                                    | Default  | Description                                                                            |
