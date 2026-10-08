@@ -66,6 +66,9 @@ jobs:
       - name: Install FFmpeg
         if: runner.os == 'Windows'
         run: choco install ffmpeg -y --no-progress
+      # choco exits with 0 when it cannot reach the package feed.
+      - name: Check FFmpeg
+        run: ffmpeg -version && ffprobe -version
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: yt_dlp_plugins/postprocessor/_nicocomments/font_data
