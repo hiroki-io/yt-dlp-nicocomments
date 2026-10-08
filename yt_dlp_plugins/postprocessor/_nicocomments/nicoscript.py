@@ -3,7 +3,16 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .comments import BASIC_COLORS, FONT_KEYS, POSITIONS, PREMIUM_COLORS, SCRIPT_PREFIXES, SIZES, command_kind
+from .comments import (
+    BASIC_COLORS,
+    FONT_KEYS,
+    MAX_BODY_LENGTH,
+    POSITIONS,
+    PREMIUM_COLORS,
+    SCRIPT_PREFIXES,
+    SIZES,
+    command_kind,
+)
 
 DEFAULT_DURATION_MS = 30000
 SCRIPT_TYPES = {"デフォルト": "default", "置換": "replace", "逆": "reverse"}
@@ -167,7 +176,7 @@ class Nicoscripts:
         scripts.replacements.sort(key=lambda r: (r.start_ms, r.posted_at_ms))
         return scripts
 
-    def apply(self, *, body: str, vpos_ms: int, commands: list[str], is_owner: bool) -> tuple[str, list[str]]:
+    def apply(self, *, body: str, vpos_ms: int, commands: list[str], is_owner: bool) -> tuple[str, list[str]] | None:
         present = {kind for command in commands if (kind := command_kind(command, premium=True))}
         added = []
         for default in self.defaults:
@@ -187,6 +196,8 @@ class Nicoscripts:
                 body = replacement.destination
             else:
                 body = body.replace(replacement.source, replacement.destination)
+                if len(body) > MAX_BODY_LENGTH:
+                    return None
             if pattern := replacement.replaced_commands_pattern():
                 commands = [c for c in commands if not pattern.search(c)] + list(replacement.commands.values())
         return body, commands

@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass, field
 
 VIEW_TIME_MS = 3000
+MAX_BODY_LENGTH = 10000
 POSITIONS = ("ue", "naka", "shita")
 SIZES = ("big", "medium", "small")
 FONT_KEYS = ("defont", "gothic", "mincho")

@@ -2,6 +2,7 @@ import math
 
 import pytest
 
+from yt_dlp_plugins.postprocessor._nicocomments.comments import MAX_BODY_LENGTH
 from yt_dlp_plugins.postprocessor._nicocomments.nicoscript import Nicoscripts, split_arguments
 
 
@@ -83,6 +84,20 @@ def test_replacement_options():
     assert apply(scripts, raw("ab")) == ("ab", [])
     scripts = Nicoscripts.parse([raw("@置換 b X 全 含む", vpos_ms=0)])
     assert apply(scripts, raw("abc"), is_owner=True) == ("X", [])
+
+
+def test_comment_is_removed_when_replacements_make_it_too_long():
+    scripts = Nicoscripts.parse(
+        [raw("@置換 a aa", vpos_ms=0, posted_at=f"2024-01-01T00:00:{i:02d}+09:00") for i in range(40)]
+    )
+    assert apply(scripts, raw("a")) is None
+    assert apply(scripts, raw("b")) == ("b", [])
+
+
+def test_replacement_can_make_the_body_as_long_as_the_limit():
+    scripts = Nicoscripts.parse([raw(f"@置換 a {'b' * MAX_BODY_LENGTH}", vpos_ms=0)])
+    assert apply(scripts, raw("a")) == ("b" * MAX_BODY_LENGTH, [])
+    assert apply(scripts, raw("aa")) is None
 
 
 def test_replacement_replaces_the_kinds_of_commands_that_the_script_has():

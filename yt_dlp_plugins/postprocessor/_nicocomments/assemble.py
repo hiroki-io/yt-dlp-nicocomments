@@ -41,9 +41,10 @@ def assemble_comments(comment: dict, threads: list[dict]) -> VideoComments:
             if not is_owner and (body := apply_owner_ngs(body, owner_ngs)) is None:
                 continue
             vpos_ms = raw["vposMs"]
-            body, commands = scripts.apply(
-                body=body, vpos_ms=vpos_ms, commands=allowed_commands(raw), is_owner=is_owner
-            )
+            applied = scripts.apply(body=body, vpos_ms=vpos_ms, commands=allowed_commands(raw), is_owner=is_owner)
+            if applied is None:
+                continue
+            body, commands = applied
             chat = Chat.parse(
                 no=raw.get("no", 0),
                 vpos_ms=vpos_ms,

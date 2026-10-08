@@ -72,6 +72,15 @@ def test_nicoscripts_of_threads_with_nicoscript_apply_to_comments():
     assert main_layer.reverse_ranges == []
 
 
+def test_comments_that_replacements_make_too_long_are_removed():
+    threads = [
+        thread("1", "owner", *[comment(i, "@置換 a aa", vpos_ms=0) for i in range(1, 41)]),
+        thread("2", "main", comment(41, "a"), comment(42, "b")),
+    ]
+    _, main_layer = assemble_comments(watch_comment(script_threads=[(1, "owner")]), threads).layers
+    assert [chat.lines for chat in main_layer.chats] == [["b"]]
+
+
 def test_owner_scripts_are_removed_before_replacement():
     threads = [
         thread(

@@ -1,6 +1,6 @@
 import re
 
-from .comments import Chat
+from .comments import MAX_BODY_LENGTH, Chat
 
 NG_SCORE_THRESHOLDS = {"high": -1000, "medium": -4800, "low": -10000, "none": None}
 
@@ -29,6 +29,8 @@ def apply_owner_ngs(body: str, owner_ngs: list[dict]) -> str | None:
             replaced = replace_ignoring_case(result, source, destination)
         # The official player compares with the original body, not with the result of the previous entry.
         if replaced != body:
+            if len(replaced) > MAX_BODY_LENGTH:
+                return None
             result = replaced
     return result
 

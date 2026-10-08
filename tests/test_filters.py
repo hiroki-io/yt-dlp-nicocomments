@@ -1,6 +1,7 @@
 import pytest
 from conftest import make_chat
 
+from yt_dlp_plugins.postprocessor._nicocomments.comments import MAX_BODY_LENGTH
 from yt_dlp_plugins.postprocessor._nicocomments.filters import (
     NG_SCORE_THRESHOLDS,
     apply_owner_ngs,
@@ -54,3 +55,15 @@ def test_invisible_command_hides_the_comment():
 )
 def test_apply_owner_ngs(body, ngs, expected):
     assert apply_owner_ngs(body, ngs) == expected
+
+
+def test_comment_is_hidden_when_owner_ngs_make_it_too_long():
+    ngs = [{"source": "a", "destination": "aa"}] * 40
+    assert apply_owner_ngs("A", ngs) is None
+    assert apply_owner_ngs("b", ngs) == "b"
+
+
+def test_owner_ng_can_make_the_body_as_long_as_the_limit():
+    ngs = [{"source": "a", "destination": "b" * MAX_BODY_LENGTH}]
+    assert apply_owner_ngs("A", ngs) == "b" * MAX_BODY_LENGTH
+    assert apply_owner_ngs("aa", ngs) is None
