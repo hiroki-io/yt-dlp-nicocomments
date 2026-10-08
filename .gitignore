@@ -1,2 +1,3 @@
 __pycache__/
 node_modules/
+yt_dlp_plugins/postprocessor/_nicocomments/font_data/

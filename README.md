@@ -3,19 +3,27 @@
 A [yt-dlp](https://github.com/yt-dlp/yt-dlp) postprocessor plugin that converts
 Niconico comments to an ASS subtitle track.
 
-## Requirements
+## Fonts
 
-Install the fonts that the official player uses on your platform:
+The plugin lays out and draws comments with:
 
-| Platform | Fonts                                                                                                |
-| -------- | ---------------------------------------------------------------------------------------------------- |
-| macOS    | Hiragino Sans W6 and W4, Hiragino Mincho ProN W3, Yu Gothic Medium, Yu Mincho Medium                 |
-| Linux    | Noto Sans CJK JP Regular and Bold, Noto Serif CJK JP Regular (`fonts-noto-cjk` on Debian and Ubuntu) |
-| Windows  | Arial, MS PGothic, Yu Gothic Regular, Yu Mincho Regular, SimSun                                      |
+- Noto Sans JP
+  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf)
+  and
+  [Bold](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/JP/NotoSansJP-Bold.otf))
+- Noto Serif JP
+  ([Regular](https://github.com/notofonts/noto-cjk/raw/Serif2.003/Serif/SubsetOTF/JP/NotoSerifJP-Regular.otf))
+- [Noto Emoji](https://raw.githubusercontent.com/google/fonts/b979dba422e445492b0eb9951ac52ee0b4d648c3/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf)
+- [Noto Sans Math](https://raw.githubusercontent.com/google/fonts/dbd1ab6e65dc59bcda3ca8de9fd372f58f98e0af/ofl/notosansmath/NotoSansMath-Regular.ttf)
+- [Noto Sans Symbols 2](https://raw.githubusercontent.com/google/fonts/7b6724ac7ececc713e9ba93af309f7520c9a80a3/ofl/notosanssymbols2/NotoSansSymbols2-Regular.ttf)
+- Noto Sans SC
+  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf))
+- Noto Sans KR
+  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf))
 
-To show emoji, also install
-[Noto Emoji](https://fonts.google.com/noto/specimen/Noto+Emoji). libass cannot
-draw color emoji fonts, so emoji are drawn in one color with this font.
+The package includes these fonts under the SIL Open Font License 1.1. With
+`--embed-subs`, the plugin saves the video as an MKV file and attaches the fonts
+to it.
 
 ## Install
 
@@ -45,10 +53,11 @@ To make sure that the release workflow of this repository built the file, run:
 gh attestation verify yt_dlp_nicocomments-*.whl -R hiroki-io/yt-dlp-nicocomments
 ```
 
-To use the code from a clone of this repository, put the repository in a plugin
-directory:
+To use the code from a clone of this repository, download the fonts and put the
+repository in a plugin directory:
 
 ```sh
+python3 ~/yt-dlp-nicocomments/tools/font_data.py
 mkdir -p ~/.config/yt-dlp/plugins
 ln -s ~/yt-dlp-nicocomments ~/.config/yt-dlp/plugins/yt-dlp-nicocomments
 ```
@@ -99,6 +108,9 @@ and `--skip-download`:
 yt-dlp --skip-download --write-subs --use-postprocessor "NicoComments:when=video" \
   https://www.nicovideo.jp/watch/sm9
 ```
+
+The ASS file does not contain the fonts, so install the font files linked in
+[Fonts](#fonts) on the computer that plays it.
 
 ### Burn the comments into the video
 

@@ -14,6 +14,15 @@ npm run lint
 `npm run lint` also type-checks the TypeScript code. `npm run format` formats
 it.
 
+## Fonts
+
+The fonts are not in the repository. `uv run` downloads them to
+`yt_dlp_plugins/postprocessor/_nicocomments/font_data` when it builds the
+project, and `uv build` includes them in the distributions. After changing
+`font_files.py`, run `python3 tools/font_data.py --licenses`. This command also
+updates the license files of the fonts in `LICENSES`, which are in the
+repository.
+
 ## Drift checks
 
 The Drift workflow detects changes in the comment API and the official web

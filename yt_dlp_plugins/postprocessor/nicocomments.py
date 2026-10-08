@@ -3,26 +3,18 @@ import optparse
 from collections.abc import Collection, Mapping
 
 from yt_dlp.postprocessor.common import PostProcessor
-from yt_dlp.utils import PostProcessingError, cli_configuration_args
+from yt_dlp.postprocessor.ffmpeg import FFmpegEmbedSubtitlePP
+from yt_dlp.utils import PostProcessingError
 
 from ._nicocomments.api import WATCH_API_LANGUAGES, CommentAPIError, fetch_comments
 from ._nicocomments.ass import build_ass
+from ._nicocomments.attachments import ASS_CONTAINER, EMBEDDING_KEY, CommentEmbedding, NicoCommentFontsPP
 from ._nicocomments.filters import NG_SCORE_THRESHOLDS
-from ._nicocomments.fonts import JAPANESE_SAMPLE, FontChain, FontError, load_font_chains
+from ._nicocomments.fonts import FontError, load_font_chains
 from ._nicocomments.hls import PlaylistError, media_duration
 from ._nicocomments.pipeline import layout_comments
 
 JSON_SUBTITLE_LANG = "comments"
-# The order in which FFmpegEmbedSubtitlePP looks up --ppa arguments for its output file.
-EMBED_OUTPUT_ARG_KEYS = [
-    "embedsubtitle+ffmpeg_o1",
-    "embedsubtitle+ffmpeg_o",
-    "embedsubtitle+ffmpeg",
-    ("embedsubtitle", "ffmpeg"),
-    "default",
-]
-DEFAULT_DISPOSITION_ARGS = ["-disposition:s:0", "default"]
-ASS_CONTAINER = "mkv"
 LANGUAGE_NAMES = {"ja": "Japanese", "en": "English", "zh": "Chinese"}
 BOOLEAN_VALUES = {"true": True, "yes": True, "1": True, "false": False, "no": False, "0": False}
 
@@ -60,13 +52,19 @@ class NicoCommentsPP(PostProcessor):
         self._default = parse_choice_option("default", default, BOOLEAN_VALUES)
         self._ng_score_threshold = parse_choice_option("nglevel", nglevel, NG_SCORE_THRESHOLDS)
         self._languages = parse_languages_option(lang)
-        self._checked_fonts = False
 
     def run(self, info):
         if info.get("extractor_key") != "Niconico":
             return [], info
         if not self.get_param("writesubtitles"):
             self.report_warning("Comments are not saved. Use --embed-subs or --write-subs")
+            return [], info
+        subtitles = (info.get("requested_subtitles") or {}).values()
+        if "filepath" in info or any("filepath" in subtitle for subtitle in subtitles):
+            # yt-dlp writes the subtitle files before the before_dl stage.
+            self.report_warning(
+                "Comments are skipped because NicoComments ran after the subtitles were written. Use when=video"
+            )
             return [], info
 
         width, height = info.get("width"), info.get("height")
@@ -83,11 +81,9 @@ class NicoCommentsPP(PostProcessor):
         except (CommentAPIError, FontError) as e:
             raise PostProcessingError(str(e)) from e
 
-        if not self._checked_fonts:
-            self._warn_about_missing_japanese_fonts(font_chains)
-            self._checked_fonts = True
         content_length_ms = self._content_length_ms(info)
         comment_subtitles = {}
+        fonts = set()
         for language, comments in fetched.items():
             slot_layers = layout_comments(
                 comments, font_chains, content_length_ms, self._ng_score_threshold, info["id"]
@@ -96,19 +92,35 @@ class NicoCommentsPP(PostProcessor):
             key = f"{language}-comments"
             name = f"{LANGUAGE_NAMES[language]} comments"
             self.to_screen(f"Laid out {sum(len(slot_layer.slots) for slot_layer in slot_layers)} {name}")
-            comment_subtitles[key] = {
-                "ext": "ass",
-                "name": name,
-                "data": build_ass(slot_layers, width, height, self._opacity, language),
-            }
+            data, used_fonts = build_ass(slot_layers, width, height, self._opacity, language)
+            fonts |= used_fonts
+            comment_subtitles[key] = {"ext": "ass", "name": name, "data": data}
 
         other_subtitles = dict(info.get("requested_subtitles") or {})
         other_subtitles.pop(JSON_SUBTITLE_LANG, None)
-        # FFmpegEmbedSubtitlePP embeds the subtitles in this order, so the first comments become the track s:0.
         info["requested_subtitles"] = {**comment_subtitles, **other_subtitles}
-        if self._default:
-            self._make_first_subtitle_track_default()
+        if self._insert_fonts_pp():
+            info.setdefault(EMBEDDING_KEY, []).append(
+                CommentEmbedding(
+                    frozenset(subtitle["name"] for subtitle in comment_subtitles.values()),
+                    frozenset(fonts),
+                    self._default,
+                )
+            )
         return [], info
+
+    def _insert_fonts_pp(self) -> bool:
+        # API users can add the postprocessor without listing it in the postprocessors param,
+        # and yt-dlp has no public API for the added postprocessors.
+        pps = self._downloader._pps["post_process"]
+        embed_index = max((i for i, pp in enumerate(pps) if isinstance(pp, FFmpegEmbedSubtitlePP)), default=None)
+        if embed_index is None:
+            return False
+        if not any(isinstance(pp, NicoCommentFontsPP) for pp in pps):
+            # The later postprocessors copy all streams, so FFmpegSplitChapters also copies the fonts
+            # to each chapter file. add_post_processor can only append to the end.
+            pps.insert(embed_index + 1, NicoCommentFontsPP(self._downloader))
+        return True
 
     def _content_length_ms(self, info) -> int | None:
         # The official player uses the duration of the media, which is not the rounded duration from the API.
@@ -120,14 +132,6 @@ class NicoCommentsPP(PostProcessor):
         duration = duration or info.get("duration")
         return math.floor(duration * 1000) if duration else None
 
-    def _warn_about_missing_japanese_fonts(self, font_chains: dict[str, FontChain]):
-        for key, chain in font_chains.items():
-            if not chain.covers(JAPANESE_SAMPLE):
-                self.report_warning(
-                    f"No installed font for {key} comments has Japanese characters, so Japanese text in these "
-                    f"comments does not match the layout. Install one of these fonts: {', '.join(chain.missing)}"
-                )
-
     def _select_ass_container(self, info):
         # yt-dlp creates the output file name after the video stage, and the merger
         # selects the container from the extension.
@@ -138,12 +142,3 @@ class NicoCommentsPP(PostProcessor):
             return
         self.to_screen(f"Merging into {ASS_CONTAINER} because {info['ext']} cannot hold ASS subtitles")
         info["ext"] = ASS_CONTAINER
-
-    def _make_first_subtitle_track_default(self):
-        pp_args = self._downloader.params.setdefault("postprocessor_args", {})
-        if not isinstance(pp_args, dict):
-            self.report_warning("Cannot make the subtitle track default because postprocessor_args is not a dict")
-            return
-        current = cli_configuration_args(pp_args, EMBED_OUTPUT_ARG_KEYS)
-        if DEFAULT_DISPOSITION_ARGS[0] not in current:
-            pp_args[EMBED_OUTPUT_ARG_KEYS[0]] = [*current, *DEFAULT_DISPOSITION_ARGS]

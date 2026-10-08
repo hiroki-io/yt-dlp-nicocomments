@@ -1,84 +1,63 @@
-import io
+import hashlib
 import struct
+import zipfile
+from pathlib import Path
 
 import pytest
 from conftest import pillow_font
 
-from yt_dlp_plugins.postprocessor._nicocomments import fonts
+from yt_dlp_plugins.postprocessor._nicocomments import font_files, fonts
 from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS
 
-FIRST_FACES = {
-    "darwin": {"defont": "HiraginoSans-W6"},
-    "win32": {"defont": "Arial-BoldMT", "gothic": "YuGothic-Regular", "mincho": "YuMincho-Regular"},
-    "linux": {"defont": "NotoSansCJKjp-Bold", "gothic": "NotoSansCJKjp-Regular", "mincho": "NotoSerifCJKjp-Regular"},
-}
-TRUETYPE_FACES = {"Arial-BoldMT", "ArialMT", "DejaVuSans-Bold", "DejaVuSans"}
+METRICS_STRING = "|ÉqÅM"
 
 
-@pytest.fixture(scope="module")
-def chains():
-    return fonts.load_font_chains()
+def test_each_font_has_one_license_file():
+    fonts_with_licenses = [font for license_file in font_files.LICENSE_FILES for font in license_file.fonts]
+    assert sorted(fonts_with_licenses, key=lambda font: font.filename) == sorted(
+        font_files.FONT_FILES, key=lambda font: font.filename
+    )
 
 
-@pytest.mark.parametrize("key", FONT_KEYS)
-def test_chain_starts_with_the_expected_font(chains, key):
-    expected = FIRST_FACES[fonts.platform_key()].get(key)
-    if expected is None:
-        pytest.skip("the first font of this chain is optional on this platform")
-    assert chains[key].faces[0].postscript_name == expected
+def test_license_files_are_in_the_repository():
+    directory = Path(__file__).resolve().parent.parent / "LICENSES"
+    assert {path.name for path in directory.iterdir()} == {
+        license_file.filename for license_file in font_files.LICENSE_FILES
+    }
 
 
 @pytest.mark.parametrize("key", FONT_KEYS)
-def test_chain_covers_japanese(chains, key):
-    assert chains[key].covers(fonts.JAPANESE_SAMPLE), f"missing fonts: {chains[key].missing}"
+def test_chain_uses_its_font_and_then_the_fallback_fonts(chains, key):
+    assert [chains[key].face_for(char).font for char in "あ\U0001f600\u2004❊们한"] == [
+        font_files.CHAIN_FONTS[key],
+        font_files.EMOJI,
+        font_files.MATH,
+        font_files.SYMBOLS,
+        font_files.SANS_SC_REGULAR,
+        font_files.SANS_KR_REGULAR,
+    ]
 
 
-@pytest.mark.parametrize("key", FONT_KEYS)
-def test_chain_has_metrics_bounds_and_names(chains, key):
-    chain = chains[key]
-    top, bottom = chain.metrics_bounds(27)
-    assert 20 < top < 40
-    assert 0 < bottom < 15
-    for face in chain.faces:
-        assert face.postscript_name
-        assert face.units_per_em > 0
-        assert face.win_height > face.win_ascent > 0
+def test_spaces_for_comment_art_have_their_own_widths(chains):
+    assert chains["defont"].text_width("\u2000\u2004\u2006", 600) == pytest.approx(300 + 200 + 100)
 
 
-def test_cff_bounds_match_the_outlines(chains):
+def test_metrics_bounds_match_the_outlines(chains, font_directory):
     for chain in chains.values():
-        for face in chain.faces:
-            if not face.is_cff or face.postscript_name not in fonts.CFF_METRICS_STRING_BOUNDS:
-                continue
-            _, top, _, bottom = pillow_font(face, face.units_per_em).getbbox(fonts.METRICS_STRING, anchor="ls")
-            assert fonts.CFF_METRICS_STRING_BOUNDS[face.postscript_name] == (-top, bottom)
+        face = chain.faces[0]
+        font = pillow_font(font_directory, face, face.units_per_em)
+        _, top, _, bottom = font.getbbox(METRICS_STRING, anchor="ls")
+        assert chain.metrics_string_bounds == (-top, bottom)
 
 
-def test_truetype_bounds_match_the_outlines():
-    found = fonts.find_faces(TRUETYPE_FACES)
-    if not found:
-        pytest.skip("no TrueType test font is installed")
-    for name, (path, offset) in found.items():
-        face = fonts.Face.load(path, offset)
-        assert not face.is_cff
-        _, top, _, bottom = pillow_font(face, face.units_per_em).getbbox(fonts.METRICS_STRING, anchor="ls")
-        assert face.metrics_bounds[0] == pytest.approx(-top, abs=2), name
-        assert face.metrics_bounds[1] == pytest.approx(bottom, abs=2), name
-
-
-def test_text_width_matches_pillow(chains):
+def test_text_width_matches_pillow(chains, font_directory):
     text = "あいうABCgjÉ漢字123"
     for chain in chains.values():
         width = chain.text_width(text, 1000)
         expected = 0.0
         for face, part in chain.runs(text):
-            expected += pillow_font(face, face.units_per_em).getlength(part) * 1000 / face.units_per_em
+            expected += pillow_font(font_directory, face, face.units_per_em).getlength(part) * 1000 / face.units_per_em
         assert width == pytest.approx(expected, rel=0.01)
-
-
-@pytest.mark.parametrize("platform", fonts.CHAIN_SPECS)
-def test_chain_specs_cover_the_font_commands(platform):
-    assert set(fonts.CHAIN_SPECS[platform]) == set(FONT_KEYS)
 
 
 def cmap_table(*subtables: tuple[int, int, bytes]) -> bytes:
@@ -91,50 +70,14 @@ def cmap_table(*subtables: tuple[int, int, bytes]) -> bytes:
     return header + records + b"".join(data for _, _, data in subtables)
 
 
-def cmap_format4(segments: list[tuple[int, int, int, list[int] | None]]) -> bytes:
-    seg_count = len(segments)
-    glyph_ids = []
-    range_offsets = []
-    for i, (_, _, _, glyphs) in enumerate(segments):
-        if glyphs is None:
-            range_offsets.append(0)
-        else:
-            range_offsets.append(2 * (seg_count - i) + 2 * len(glyph_ids))
-            glyph_ids += glyphs
-    body = struct.pack(f">{seg_count}H", *(end for _, end, _, _ in segments)) + b"\0\0"
-    body += struct.pack(f">{seg_count}H", *(start for start, _, _, _ in segments))
-    body += struct.pack(f">{seg_count}h", *(delta for _, _, delta, _ in segments))
-    body += struct.pack(f">{seg_count}H", *range_offsets)
-    body += struct.pack(f">{len(glyph_ids)}H", *glyph_ids)
-    return struct.pack(">7H", 4, 14 + len(body), 0, 2 * seg_count, 0, 0, 0) + body
-
-
 def cmap_format12(groups: list[tuple[int, int, int]]) -> bytes:
     body = b"".join(struct.pack(">III", *group) for group in groups)
     return struct.pack(">HHIII", 12, 0, 16 + len(body), 0, len(groups)) + body
 
 
-def test_parse_cmap_format4_maps_delta_and_glyph_array_segments_and_skips_glyph_0():
-    subtable = cmap_format4(
-        [
-            (0x41, 0x43, 10 - 0x41, None),
-            (0x3042, 0x3044, 5, [20, 0, 22]),
-            (0xFFFF, 0xFFFF, 1, None),
-        ]
-    )
-    assert fonts.parse_cmap(cmap_table((3, 1, subtable))) == {
-        0x41: 10,
-        0x42: 11,
-        0x43: 12,
-        0x3042: 25,
-        0x3044: 27,
-    }
-
-
-def test_parse_cmap_prefers_format12():
-    format4 = cmap_format4([(0x41, 0x41, 1, None), (0xFFFF, 0xFFFF, 1, None)])
+def test_parse_cmap_maps_format12_groups():
     format12 = cmap_format12([(0x41, 0x42, 5), (0x1F600, 0x1F601, 100)])
-    assert fonts.parse_cmap(cmap_table((3, 1, format4), (3, 10, format12))) == {
+    assert fonts.parse_cmap(cmap_table((0, 4, format12), (3, 10, format12))) == {
         0x41: 5,
         0x42: 6,
         0x1F600: 100,
@@ -142,32 +85,20 @@ def test_parse_cmap_prefers_format12():
     }
 
 
-def test_parse_cmap_rejects_tables_without_unicode_subtables():
-    with pytest.raises(ValueError, match="no supported Unicode cmap subtable"):
-        fonts.parse_cmap(cmap_table((1, 0, struct.pack(">HHH", 0, 262, 0) + bytes(256))))
-
-
-def test_face_offsets_of_a_collection_are_read_from_the_ttc_header():
-    header = b"ttcf" + struct.pack(">II3I", 0x00010000, 3, 24, 300, 600)
-    assert fonts._face_offsets(io.BytesIO(header)) == [24, 300, 600]
-
-
-def test_single_font_has_one_face_at_offset_0():
-    assert fonts._face_offsets(io.BytesIO(struct.pack(">IHHHH", 0x00010000, 0, 0, 0, 0))) == [0]
+def test_parse_cmap_rejects_tables_without_a_windows_format12_subtable():
+    format12 = cmap_format12([(0x41, 0x41, 1)])
+    with pytest.raises(ValueError, match="no format 12 Unicode cmap subtable"):
+        fonts.parse_cmap(cmap_table((0, 4, format12), (1, 0, struct.pack(">HHH", 0, 262, 0) + bytes(256))))
 
 
 def synthetic_face(name: str, chars: str, advance: int) -> fonts.Face:
     return fonts.Face(
-        name,
-        name,
-        False,
-        400,
+        font_files.FontFile(name, f"https://example.com/{name}.otf", ""),
         1000,
         800,
         1000,
         [500] + [advance] * len(chars),
         {ord(char): i + 1 for i, char in enumerate(chars)},
-        (800, 200),
     )
 
 
@@ -190,42 +121,72 @@ def test_extends_cluster(text, expected):
 def test_characters_that_extend_a_cluster_add_no_width_and_use_the_previous_face():
     latin = synthetic_face("Latin", "a", 600)
     symbols = synthetic_face("Symbols", "❤", 1000)
-    chain = fonts.FontChain([latin, symbols], 400, 0.0)
+    chain = fonts.FontChain([latin, symbols], (800, 200))
     text = "a❤\ufe0f\u200ba"
     assert chain.text_width(text, 100) == pytest.approx(60 + 100 + 60)
     assert chain.runs(text) == [(latin, "a"), (symbols, "❤\ufe0f\u200b"), (latin, "a")]
 
 
-SPEC_FACE_NAMES = {name for spec in fonts.CHAIN_SPECS[fonts.platform_key()].values() for name in spec.face_names}
+FONT_DATA = b"font data"
+TEST_FONT = font_files.FontFile(
+    "Test-Regular", "https://example.com/Test-Regular.otf", hashlib.sha256(FONT_DATA).hexdigest()
+)
+
+
+OTHER_DATA = b"other font data"
+OTHER_FONT = font_files.FontFile(
+    "Other-Regular", "https://example.com/Other-Regular.ttf", hashlib.sha256(OTHER_DATA).hexdigest()
+)
 
 
 @pytest.fixture
-def install_faces(monkeypatch):
-    def install(names: set[str]):
-        monkeypatch.setattr(fonts, "find_faces", lambda wanted: {name: (name, 0) for name in wanted & names})
-        fonts.load_font_chains.cache_clear()
-
-    monkeypatch.setattr(
-        fonts.Face,
-        "load",
-        lambda path, offset: synthetic_face(path, "😀" if path == fonts.EMOJI_FACE_NAME else "あ", 1000),
-    )
-    yield install
-    fonts.load_font_chains.cache_clear()
+def package_directory(tmp_path):
+    directory = tmp_path / "package"
+    directory.mkdir()
+    (directory / "Test-Regular.otf").write_bytes(FONT_DATA)
+    (directory / "Other-Regular.ttf").write_bytes(OTHER_DATA)
+    return directory
 
 
-def test_emoji_face_is_the_last_face_of_every_chain(install_faces):
-    install_faces(SPEC_FACE_NAMES | {fonts.EMOJI_FACE_NAME})
-    for chain in fonts.load_font_chains().values():
-        assert chain.faces[-1].postscript_name == fonts.EMOJI_FACE_NAME
-        assert chain.face_for("あ") is chain.faces[0]
-        assert chain.face_for("😀") is chain.faces[-1]
-        assert chain.missing == ()
-        assert not chain.synthetic_bold(chain.faces[-1])
+@pytest.fixture
+def zipped_package_directory(tmp_path_factory):
+    path = tmp_path_factory.mktemp("zip") / "plugin.whl"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("font_data/Test-Regular.otf", FONT_DATA)
+        archive.writestr("font_data/Other-Regular.ttf", OTHER_DATA)
+    with zipfile.ZipFile(path) as archive:
+        yield zipfile.Path(archive, "font_data/")
 
 
-def test_chains_do_not_contain_the_emoji_face_when_it_is_not_installed(install_faces):
-    install_faces(SPEC_FACE_NAMES)
-    for chain in fonts.load_font_chains().values():
-        assert fonts.EMOJI_FACE_NAME not in [face.postscript_name for face in chain.faces]
-        assert chain.missing == ()
+def test_bundled_fonts_are_read_from_the_file_system(package_directory):
+    assert fonts.read_bundled_fonts([TEST_FONT, OTHER_FONT], package_directory) == {
+        TEST_FONT: FONT_DATA,
+        OTHER_FONT: OTHER_DATA,
+    }
+
+
+def test_bundled_fonts_are_read_from_a_zip_file(zipped_package_directory):
+    assert fonts.read_bundled_fonts([TEST_FONT], zipped_package_directory) == {TEST_FONT: FONT_DATA}
+
+
+def test_missing_bundled_font_is_an_error(tmp_path):
+    with pytest.raises(fonts.FontError, match="cannot read the bundled font Test-Regular"):
+        fonts.read_bundled_fonts([TEST_FONT], tmp_path)
+
+
+def test_bundled_font_with_another_hash_is_an_error(package_directory):
+    (package_directory / "Test-Regular.otf").write_bytes(b"old")
+    with pytest.raises(fonts.FontError, match="unexpected SHA-256 hash of the bundled font Test-Regular"):
+        fonts.read_bundled_fonts([TEST_FONT], package_directory)
+
+
+def test_bundled_font_on_the_file_system_is_used_in_place(tmp_path, package_directory):
+    path = fonts.bundled_font_path(TEST_FONT, package_directory, tmp_path)
+    assert path == package_directory / "Test-Regular.otf"
+    assert list(tmp_path.glob("*.otf")) == []
+
+
+def test_zipped_font_is_extracted_to_the_directory(tmp_path, zipped_package_directory):
+    path = fonts.bundled_font_path(TEST_FONT, zipped_package_directory, tmp_path)
+    assert path == tmp_path / "Test-Regular.otf"
+    assert path.read_bytes() == FONT_DATA

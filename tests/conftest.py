@@ -1,10 +1,11 @@
 import io
 import json
+from pathlib import Path
 
 import pytest
 from PIL import ImageFont
 
-from yt_dlp_plugins.postprocessor._nicocomments import fetch, fonts
+from yt_dlp_plugins.postprocessor._nicocomments import fetch, font_files, fonts
 from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS, Chat
 
 
@@ -13,8 +14,6 @@ def make_chat(*, no=1, vpos_ms=0, score=0, body="comment", commands=(), fork="ma
 
 
 class FixedWidthChain:
-    adjust_baseline = 0.0
-
     def text_width(self, text: str, px: int) -> float:
         return len(text) * px
 
@@ -28,6 +27,8 @@ class FakeDownloader:
         self.params = params or {}
         self.requests = []
         self.warnings = []
+        self.messages = []
+        self._pps = {"post_process": []}
 
     def urlopen(self, request):
         self.requests.append(request)
@@ -38,8 +39,8 @@ class FakeDownloader:
             response = json.dumps(response).encode()
         return io.BytesIO(response)
 
-    def to_screen(self, *args, **kwargs):
-        pass
+    def to_screen(self, text, *args, **kwargs):
+        self.messages.append(text)
 
     def to_console_title(self, *args, **kwargs):
         pass
@@ -49,6 +50,9 @@ class FakeDownloader:
 
     def report_warning(self, text, *args, **kwargs):
         self.warnings.append(text)
+
+    def add_post_processor(self, pp, when="post_process"):
+        self._pps.setdefault(when, []).append(pp)
 
 
 @pytest.fixture(autouse=True)
@@ -63,8 +67,15 @@ def fixed_width_chains():
     return {key: FixedWidthChain() for key in FONT_KEYS}
 
 
-def pillow_font(face: fonts.Face, size: int) -> ImageFont.FreeTypeFont:
-    path, offset = fonts.find_faces({face.postscript_name})[face.postscript_name]
-    with open(path, "rb") as f:
-        index = fonts._face_offsets(f).index(offset)
-    return ImageFont.truetype(str(path), size, index=index)
+def pillow_font(font_directory, face: fonts.Face, size: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(font_directory / face.font.filename), size)
+
+
+@pytest.fixture(scope="session")
+def font_directory():
+    return Path(fonts.__file__).with_name(font_files.FONT_DATA_DIRECTORY)
+
+
+@pytest.fixture(scope="session")
+def chains():
+    return fonts.load_font_chains()

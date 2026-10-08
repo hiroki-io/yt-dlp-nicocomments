@@ -120,8 +120,7 @@ class Slot:
         # Copies the official player, which multiplies the text height by shrink
         # although the height already includes it.
         centered_top = (self.height - text_height * shrink * shrink) / 2
-        text_top = centered_top + self.font_chain.adjust_baseline * self.line_height * shrink
-        first = self.y + text_top + STROKE_WIDTH / 2 + top * shrink
+        first = self.y + centered_top + STROKE_WIDTH / 2 + top * shrink
         return [first + i * self.line_height for i in range(line_count)]
 
     def x_at(self, t: float) -> float:

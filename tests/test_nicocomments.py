@@ -3,15 +3,13 @@ import optparse
 import pytest
 from conftest import FakeDownloader
 from yt_dlp.networking.exceptions import TransportError
+from yt_dlp.postprocessor.ffmpeg import FFmpegEmbedSubtitlePP, FFmpegSplitChaptersPP
 
 from yt_dlp_plugins.postprocessor import nicocomments
+from yt_dlp_plugins.postprocessor._nicocomments import font_files, fonts
+from yt_dlp_plugins.postprocessor._nicocomments.attachments import EMBEDDING_KEY, NicoCommentFontsPP
 from yt_dlp_plugins.postprocessor._nicocomments.comments import CommentLayer, VideoComments
 from yt_dlp_plugins.postprocessor.nicocomments import NicoCommentsPP
-
-
-class CoveringChain:
-    def covers(self, text: str) -> bool:
-        return True
 
 
 def video_info(**fields):
@@ -27,8 +25,11 @@ def video_info(**fields):
     }
 
 
-def downloader(**params):
-    return FakeDownloader(params={"writesubtitles": True, **params})
+def downloader(embed_subtitles=True, **params):
+    ydl = FakeDownloader(params={"writesubtitles": True, **params})
+    if embed_subtitles:
+        ydl.add_post_processor(FFmpegEmbedSubtitlePP(ydl))
+    return ydl
 
 
 @pytest.fixture
@@ -39,9 +40,20 @@ def fake_fonts_and_comments(monkeypatch):
         languages.append(language)
         return VideoComments([CommentLayer(0, False, [])], False)
 
-    monkeypatch.setattr(nicocomments, "load_font_chains", lambda: {"defont": CoveringChain()})
+    monkeypatch.setattr(nicocomments, "load_font_chains", dict)
     monkeypatch.setattr(nicocomments, "fetch_comments", fetch_comments)
     return languages
+
+
+@pytest.fixture
+def used_fonts(monkeypatch):
+    fonts_of_videos = []
+
+    def build_ass(*args):
+        return "[Script Info]\n", fonts_of_videos.pop(0) if fonts_of_videos else set()
+
+    monkeypatch.setattr(nicocomments, "build_ass", build_ass)
+    return fonts_of_videos
 
 
 @pytest.mark.parametrize(
@@ -124,34 +136,6 @@ def test_merge_output_format_keeps_the_extension(fake_fonts_and_comments):
     assert ydl.warnings == ["Comments can lose their layout because mp4 cannot hold ASS subtitles"]
 
 
-@pytest.mark.parametrize(
-    ("pp_args", "expected"),
-    [
-        ({}, ["-disposition:s:0", "default"]),
-        ({"embedsubtitle+ffmpeg": ["-metadata", "a=b"]}, ["-metadata", "a=b", "-disposition:s:0", "default"]),
-        ({"default": ["-v", "0"]}, ["-v", "0", "-disposition:s:0", "default"]),
-        ({"embedsubtitle+ffmpeg_o1": ["-disposition:s:0", "0"]}, ["-disposition:s:0", "0"]),
-    ],
-)
-def test_default_disposition_is_merged_into_postprocessor_args(fake_fonts_and_comments, pp_args, expected):
-    ydl = downloader(postprocessor_args=pp_args)
-    NicoCommentsPP(ydl).run(video_info())
-    assert pp_args["embedsubtitle+ffmpeg_o1"] == expected
-
-
-def test_default_false_keeps_postprocessor_args(fake_fonts_and_comments):
-    ydl = downloader()
-    NicoCommentsPP(ydl, default="false").run(video_info())
-    assert "postprocessor_args" not in ydl.params
-
-
-def test_postprocessor_args_that_are_not_a_dict_are_kept_with_a_warning(fake_fonts_and_comments):
-    ydl = downloader(postprocessor_args=["-v", "0"])
-    NicoCommentsPP(ydl).run(video_info())
-    assert ydl.params["postprocessor_args"] == ["-v", "0"]
-    assert ydl.warnings == ["Cannot make the subtitle track default because postprocessor_args is not a dict"]
-
-
 def test_content_length_is_rounded_down():
     ydl = FakeDownloader([b"#EXTINF:10.0,\na.ts\n#EXTINF:5.0006,\nb.ts\n"])
     info = video_info(requested_formats=None, url="https://example.com/v.m3u8", protocol="m3u8_native")
@@ -171,3 +155,69 @@ def test_content_length_without_hls_formats_uses_the_api_duration():
     pp = NicoCommentsPP(FakeDownloader())
     assert pp._content_length_ms(video_info(duration=320.5)) == 320500
     assert pp._content_length_ms(video_info(duration=None)) is None
+
+
+def test_font_errors_raise_postprocessing_error(fake_fonts_and_comments, monkeypatch):
+    def fail():
+        raise fonts.FontError("cannot read the bundled font NotoSansJP-Bold.otf: no such file")
+
+    monkeypatch.setattr(nicocomments, "load_font_chains", fail)
+    with pytest.raises(nicocomments.PostProcessingError, match="no such file"):
+        NicoCommentsPP(downloader()).run(video_info())
+
+
+def test_used_fonts_and_comment_tracks_are_saved_for_the_fonts_postprocessor(fake_fonts_and_comments, used_fonts):
+    used_fonts += [{font_files.SANS_BOLD}, {font_files.MATH}]
+    info = video_info()
+    NicoCommentsPP(downloader(), lang="ja,en").run(info)
+    [embedding] = info[EMBEDDING_KEY]
+    assert embedding.track_names == {"Japanese comments", "English comments"}
+    assert embedding.fonts == {font_files.SANS_BOLD, font_files.MATH}
+    assert embedding.default
+
+
+def test_fonts_postprocessor_is_added_once_after_the_embedding(fake_fonts_and_comments, used_fonts):
+    ydl = downloader()
+    split_pp = FFmpegSplitChaptersPP(ydl)
+    ydl.add_post_processor(split_pp)
+    NicoCommentsPP(ydl).run({"extractor_key": "Youtube"})
+    assert len(ydl._pps["post_process"]) == 2
+    info = video_info()
+    NicoCommentsPP(ydl, lang="ja").run(info)
+    NicoCommentsPP(ydl, lang="en", default="false").run(info)
+    assert [(embedding.track_names, embedding.default) for embedding in info[EMBEDDING_KEY]] == [
+        ({"Japanese comments"}, True),
+        ({"English comments"}, False),
+    ]
+    embed_pp, fonts_pp, last_pp = ydl._pps["post_process"]
+    assert isinstance(embed_pp, FFmpegEmbedSubtitlePP)
+    assert isinstance(fonts_pp, NicoCommentFontsPP)
+    assert last_pp is split_pp
+
+
+def test_fonts_postprocessor_is_not_added_without_embedding_the_subtitles(fake_fonts_and_comments, used_fonts):
+    ydl = downloader(embed_subtitles=False)
+    info = video_info()
+    NicoCommentsPP(ydl).run(info)
+    assert "ja-comments" in info["requested_subtitles"]
+    assert EMBEDDING_KEY not in info
+    assert ydl._pps["post_process"] == []
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"filepath": "video.mp4"},
+        {"requested_subtitles": {"comments": {"ext": "json", "filepath": "video.comments.json"}}},
+    ],
+)
+def test_comments_are_skipped_after_the_subtitles_are_written(fake_fonts_and_comments, fields):
+    ydl = downloader()
+    info = video_info(**fields)
+    NicoCommentsPP(ydl).run(info)
+    assert ydl.warnings == [
+        "Comments are skipped because NicoComments ran after the subtitles were written. Use when=video"
+    ]
+    assert fake_fonts_and_comments == []
+    assert info.get("requested_subtitles") == fields.get("requested_subtitles")
+    assert len(ydl._pps["post_process"]) == 1

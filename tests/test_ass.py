@@ -7,12 +7,14 @@ from yt_dlp_plugins.postprocessor._nicocomments.ass import (
     Viewport,
     ass_color,
     ass_escape,
+    ass_runs,
     ass_time,
     build_ass,
     comment_opacity,
     paint_order,
     slot_events,
 )
+from yt_dlp_plugins.postprocessor._nicocomments.font_files import FontFile
 from yt_dlp_plugins.postprocessor._nicocomments.fonts import Face, FontChain
 from yt_dlp_plugins.postprocessor._nicocomments.layout import (
     BEHIND_ADJUST_MS,
@@ -27,8 +29,8 @@ STAGE = Viewport(0, 0, STAGE_WIDTH, STAGE_HEIGHT)
 
 
 def make_chain() -> FontChain:
-    face = Face("Test-Regular", "Test Regular", False, 400, 1000, 800, 1000, [500], {}, (800, 200))
-    return FontChain([face], 400, 0.0)
+    font = FontFile("Test-Regular", "https://example.com/Test-Regular.otf", "")
+    return FontChain([Face(font, 1000, 800, 1000, [500], {})], (800, 200))
 
 
 def make_slot(body="comment", commands=(), vpos_ms=0, no=1, shown_ms=1000, hidden_ms=6000) -> Slot:
@@ -64,14 +66,14 @@ def test_live_command_and_translucent_layer_reduce_opacity():
 
 
 def test_fixed_comment_uses_pos():
-    (event,) = slot_events(make_slot(commands=["ue"]), STAGE, 1.0, 0, 1.0)
+    (event,), _ = slot_events(make_slot(commands=["ue"]), STAGE, 1.0, 0, 1.0)
     assert "\\pos(" in event
     assert "\\move(" not in event
 
 
 def test_moving_comment_x_matches_x_at_shown_ms_and_hidden_ms():
     slot = make_slot()
-    (event,) = slot_events(slot, STAGE, 1.0, 0, 1.0)
+    (event,), _ = slot_events(slot, STAGE, 1.0, 0, 1.0)
     x0, y0, x1, y1 = map(float, re.search(r"\\move\(([^,]+),([^,]+),([^,]+),([^)]+)\)", event).groups())
     assert x0 == pytest.approx(slot.x_at(slot.shown_ms) + slot.text_offset_x, abs=0.01)
     assert x1 == pytest.approx(slot.x_at(slot.hidden_ms) + slot.text_offset_x, abs=0.01)
@@ -80,18 +82,18 @@ def test_moving_comment_x_matches_x_at_shown_ms_and_hidden_ms():
 
 
 def test_slot_events_skip_blank_lines():
-    events = slot_events(make_slot(body="a\n \nb"), STAGE, 1.0, 0, 1.0)
+    events, _ = slot_events(make_slot(body="a\n \nb"), STAGE, 1.0, 0, 1.0)
     assert [event[-1] for event in events] == ["a", "b"]
 
 
 @pytest.mark.parametrize(("shown_ms", "hidden_ms"), [(1000, 1004), (1000, 1000), (2000, 1000)])
 def test_slot_events_are_empty_when_the_end_is_not_after_the_start(shown_ms, hidden_ms):
-    assert slot_events(make_slot(shown_ms=shown_ms, hidden_ms=hidden_ms), STAGE, 1.0, 0, 1.0) == []
+    assert slot_events(make_slot(shown_ms=shown_ms, hidden_ms=hidden_ms), STAGE, 1.0, 0, 1.0) == ([], set())
 
 
 @pytest.mark.parametrize(("commands", "border"), [([], "&H000000&"), (["black"], "&HFFFFFF&")])
 def test_border_color_contrasts_with_the_text_color(commands, border):
-    (event,) = slot_events(make_slot(commands=commands), STAGE, 1.0, 0, 1.0)
+    (event,), _ = slot_events(make_slot(commands=commands), STAGE, 1.0, 0, 1.0)
     assert f"\\3c{border}" in event
 
 
@@ -100,12 +102,12 @@ def test_build_ass_sorts_events_by_layer_and_paint_order():
         SlotLayer(0, False, [make_slot(body="d", vpos_ms=500), make_slot(body="c", vpos_ms=0)]),
         SlotLayer(2, False, [make_slot(body="b", no=2), make_slot(body="a", no=1)]),
     ]
-    ass = build_ass(layers, 1920, 1080, 1.0, "ja")
+    ass, _ = build_ass(layers, 1920, 1080, 1.0, "ja")
     assert dialogue_layers(ass) == [(0, "a"), (0, "b"), (2, "c"), (2, "d")]
 
 
 def test_build_ass_writes_the_language_in_the_script_info():
-    assert "\nLanguage: en\n" in build_ass([], 1920, 1080, 1.0, "en").split("[V4+ Styles]")[0]
+    assert "\nLanguage: en\n" in build_ass([], 1920, 1080, 1.0, "en")[0].split("[V4+ Styles]")[0]
 
 
 def test_ass_time_formats_centiseconds_as_h_mm_ss_cc():
@@ -129,3 +131,22 @@ def test_later_moving_comment_is_painted_over_earlier_fixed_comment():
 def test_comments_in_the_same_centisecond_are_painted_by_number():
     first, second = make_slot(vpos_ms=10009, no=2), make_slot(vpos_ms=10001, no=1)
     assert paint_order([first, second]) == [second, first]
+
+
+def test_build_ass_returns_the_fonts_of_the_drawn_lines():
+    blank = make_slot(body="\u3000\u2004")
+    hidden = make_slot(body="b", shown_ms=1000, hidden_ms=1000)
+    _, fonts = build_ass([SlotLayer(0, False, [blank, hidden])], 1920, 1080, 1.0, "ja")
+    assert fonts == set()
+    slot = make_slot(body="a")
+    _, fonts = build_ass([SlotLayer(0, False, [slot])], 1920, 1080, 1.0, "ja")
+    assert fonts == {slot.font_chain.faces[0].font}
+
+
+def test_ass_runs_write_synthetic_bold_for_each_run():
+    chain = make_chain()
+    regular, bold = chain.faces[0], Face(chain.faces[0].font, 1000, 800, 1000, [500], {})
+    chain.faces.append(bold)
+    chain.bold_fallbacks = True
+    text = ass_runs(chain, [(regular, "a"), (bold, "b"), (regular, "c")], 30.0, 1.0)
+    assert [m[1] for m in re.finditer(r"\\b(\d)\}", text)] == ["0", "1", "0"]

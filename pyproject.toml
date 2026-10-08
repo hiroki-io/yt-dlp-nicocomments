@@ -7,8 +7,8 @@ name = "yt-dlp-nicocomments"
 version = "0.1.0"
 description = "yt-dlp plugin that converts Niconico comments to ASS subtitles"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "MIT AND OFL-1.1"
+license-files = ["LICENSE", "LICENSES/*"]
 authors = [{ name = "Hiroki Okada", email = "hiroki@hiroki.io" }]
 requires-python = ">=3.10"
 dependencies = []
@@ -17,10 +17,20 @@ dependencies = []
 dev = ["pillow", "pytest", "ruff", "yt-dlp"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/yt_dlp_plugins", "/tests", "/tools/drift/official.json"]
+include = ["/yt_dlp_plugins", "/tests", "/tools/drift/official.json", "/tools/font_data.py", "/hatch_build.py"]
+
+[tool.hatch.build.hooks.custom]
 
 [tool.hatch.build.targets.wheel]
 packages = ["yt_dlp_plugins"]
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "hatch_build.py" },
+    { file = "tools/font_data.py" },
+    { file = "yt_dlp_plugins/postprocessor/_nicocomments/font_files.py" },
+]
 
 [tool.ruff]
 line-length = 120

@@ -9,10 +9,6 @@ on:
 permissions:
   contents: read
 
-env:
-  NOTO_EMOJI_URL: https://raw.githubusercontent.com/google/fonts/b979dba422e445492b0eb9951ac52ee0b4d648c3/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf
-  NOTO_EMOJI_SHA256: de6c18832938afc99caf132b39d6a30a19bac7f2e812e28db2535b4608d27551
-
 jobs:
   lint:
     name: Lint
@@ -22,8 +18,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-      - run: uv run --locked ruff check
-      - run: uv run --locked ruff format --check
+      - run: uv run --locked --only-dev ruff check
+      - run: uv run --locked --only-dev ruff format --check
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
@@ -39,17 +35,14 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-        # Only the jobs with emoji-font install Noto Emoji. The other jobs test the plugin without it.
         include:
-          - { os: ubuntu-latest, python-version: "3.14", emoji-font: true }
           - { os: macos-latest, python-version: "3.10" }
-          - { os: macos-latest, python-version: "3.14", emoji-font: true }
+          - { os: macos-latest, python-version: "3.14" }
           - { os: windows-latest, python-version: "3.10" }
-          - { os: windows-latest, python-version: "3.14", emoji-font: true }
+          - { os: windows-latest, python-version: "3.14" }
     runs-on: ${{ matrix.os }}
     env:
       REQUIRE_LIBASS: "1"
-      REQUIRE_EMOJI_FONT: ${{ matrix.emoji-font && '1' || '0' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,46 +50,21 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install fonts and FFmpeg
+      - name: Install FFmpeg
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk ffmpeg
+          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Install FFmpeg
         if: runner.os == 'macOS'
         run: |
           brew install ffmpeg-full
           echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
-      - name: Install fonts
-        if: runner.os == 'Windows'
-        run: >-
-          dism /Online /NoRestart /Add-Capability
-          /CapabilityName:Language.Fonts.Jpan~~~und-JPAN~0.0.1.0
-          /CapabilityName:Language.Fonts.Hans~~~und-HANS~0.0.1.0
       - name: Install FFmpeg
         if: runner.os == 'Windows'
         run: choco install ffmpeg -y --no-progress
-      - name: Install Noto Emoji
-        if: runner.os == 'Linux' && matrix.emoji-font
-        run: |
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/NotoEmoji.ttf" "$NOTO_EMOJI_URL"
-          echo "$NOTO_EMOJI_SHA256  $RUNNER_TEMP/NotoEmoji.ttf" | sha256sum -c -
-          mkdir -p ~/.local/share/fonts
-          cp "$RUNNER_TEMP/NotoEmoji.ttf" ~/.local/share/fonts/
-          fc-cache -f
-      - name: Install Noto Emoji
-        if: runner.os == 'macOS' && matrix.emoji-font
-        run: |
-          curl -fsSL --retry 3 -o "$RUNNER_TEMP/NotoEmoji.ttf" "$NOTO_EMOJI_URL"
-          echo "$NOTO_EMOJI_SHA256  $RUNNER_TEMP/NotoEmoji.ttf" | shasum -a 256 -c -
-          cp "$RUNNER_TEMP/NotoEmoji.ttf" ~/Library/Fonts/
-      - name: Install Noto Emoji
-        if: runner.os == 'Windows' && matrix.emoji-font
-        shell: pwsh
-        run: |
-          $font = Join-Path $env:RUNNER_TEMP NotoEmoji.ttf
-          Invoke-WebRequest -Uri $env:NOTO_EMOJI_URL -OutFile $font
-          if ((Get-FileHash $font -Algorithm SHA256).Hash -ne $env:NOTO_EMOJI_SHA256) { throw "Unexpected SHA-256 hash of $font" }
-          Copy-Item $font "$env:WINDIR\Fonts\NotoEmoji.ttf"
-          New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" -Name "Noto Emoji (TrueType)" -Value NotoEmoji.ttf -Force | Out-Null
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: yt_dlp_plugins/postprocessor/_nicocomments/font_data
+          key: fonts-${{ hashFiles('yt_dlp_plugins/postprocessor/_nicocomments/font_files.py') }}
       - run: uv run --locked pytest

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from .comments import Chat
+from .font_files import FontFile
 from .fonts import Face, FontChain
 from .layout import STAGE_HEIGHT, STAGE_WIDTH, STROKE_WIDTH, Slot, SlotLayer
 
@@ -30,14 +31,6 @@ class Viewport:
             return cls((STAGE_WIDTH - width) / 2, 0.0, width, STAGE_HEIGHT)
         height = STAGE_WIDTH / aspect
         return cls(0.0, (STAGE_HEIGHT - height) / 2, STAGE_WIDTH, height)
-
-
-def ass_font_name(face: Face) -> str:
-    # Like GDI, libass finds CFF fonts by the PostScript name and TrueType fonts by the full name.
-    # libass with CoreText cannot find variable fonts by the full name. All backends find them by the family name.
-    if face.is_variable:
-        return face.family_name
-    return face.postscript_name if face.is_cff else face.full_name
 
 
 def ass_font_size(face: Face, em: float) -> float:
@@ -75,11 +68,13 @@ def comment_opacity(chat: Chat, translucent: bool) -> float:
     return live * (TRANSLUCENT_LAYER_OPACITY if translucent else 1.0)
 
 
-def slot_events(slot: Slot, viewport: Viewport, video_scale: float, ass_layer: int, opacity: float) -> list[str]:
+def slot_events(
+    slot: Slot, viewport: Viewport, video_scale: float, ass_layer: int, opacity: float
+) -> tuple[list[str], set[FontFile]]:
     start_cs = round(slot.shown_ms / 10)
     end_cs = round(slot.hidden_ms / 10)
     if end_cs <= start_cs:
-        return []
+        return [], set()
     chat = slot.chat
     em = slot.em
     border = "FFFFFF" if chat.color == "000000" else "000000"
@@ -92,10 +87,12 @@ def slot_events(slot: Slot, viewport: Viewport, video_scale: float, ass_layer: i
     x1 = (slot.screen_x_at(end_cs * 10) + slot.text_offset_x - viewport.x) * video_scale
 
     events = []
+    fonts = set()
     for line, baseline in zip(chat.lines, slot.line_baselines(), strict=True):
         if not line.strip():
             continue
         runs = slot.font_chain.runs(line)
+        fonts.update(face.font for face, _ in runs)
         y = (line_top(runs, em, baseline) - viewport.y) * video_scale
         if chat.is_fixed:
             placement = f"\\an7\\pos({x0:.2f},{y:.2f})"
@@ -105,7 +102,7 @@ def slot_events(slot: Slot, viewport: Viewport, video_scale: float, ass_layer: i
             f"Dialogue: {ass_layer},{ass_time(start_cs)},{ass_time(end_cs)},Default,,0,0,0,,"
             f"{{{placement}{style}}}{ass_runs(slot.font_chain, runs, em, video_scale)}"
         )
-    return events
+    return events, fonts
 
 
 def ass_runs(chain: FontChain, runs: list[tuple[Face, str]], em: float, video_scale: float) -> str:
@@ -113,7 +110,7 @@ def ass_runs(chain: FontChain, runs: list[tuple[Face, str]], em: float, video_sc
     for face, text in runs:
         bold = 1 if chain.synthetic_bold(face) else 0
         size = ass_font_size(face, em) * video_scale
-        parts.append(f"{{\\fn{ass_font_name(face)}\\fs{size:.2f}\\b{bold}}}{ass_escape(text)}")
+        parts.append(f"{{\\fn{face.font.ass_name}\\fs{size:.2f}\\b{bold}}}{ass_escape(text)}")
     return "".join(parts)
 
 
@@ -141,13 +138,18 @@ def paint_order(slots: list[Slot]) -> list[Slot]:
     return sorted(slots, key=lambda slot: (slot.chat.vpos_ms // 10, slot.chat.no))
 
 
-def build_ass(layers: list[SlotLayer], width: int, height: int, opacity: float, language: str) -> str:
+def build_ass(
+    layers: list[SlotLayer], width: int, height: int, opacity: float, language: str
+) -> tuple[str, set[FontFile]]:
     viewport = Viewport.for_video(width, height)
     video_scale = height / viewport.height
     top_index = max((layer.index for layer in layers), default=0)
     events = []
+    fonts = set()
     for layer in sorted(layers, key=lambda layer: -layer.index):
         for slot in paint_order(layer.slots):
             slot_opacity = comment_opacity(slot.chat, layer.translucent) * opacity
-            events += slot_events(slot, viewport, video_scale, top_index - layer.index, slot_opacity)
-    return ass_header(width, height, language) + "\n".join(events) + "\n"
+            new_events, new_fonts = slot_events(slot, viewport, video_scale, top_index - layer.index, slot_opacity)
+            events += new_events
+            fonts |= new_fonts
+    return ass_header(width, height, language) + "\n".join(events) + "\n", fonts
