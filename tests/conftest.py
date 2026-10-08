@@ -1,5 +1,6 @@
 import io
 import json
+import struct
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,21 @@ from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS, Chat
 
 def make_chat(*, no=1, vpos_ms=0, score=0, body="comment", commands=(), fork="main") -> Chat:
     return Chat.parse(no=no, vpos_ms=vpos_ms, score=score, body=body, commands=list(commands), fork=fork)
+
+
+def cmap_table(*subtables: tuple[int, int, bytes]) -> bytes:
+    header = struct.pack(">HH", 0, len(subtables))
+    offset = 4 + 8 * len(subtables)
+    records = b""
+    for platform, encoding, data in subtables:
+        records += struct.pack(">HHI", platform, encoding, offset)
+        offset += len(data)
+    return header + records + b"".join(data for _, _, data in subtables)
+
+
+def cmap_format12(groups: list[tuple[int, int, int]]) -> bytes:
+    body = b"".join(struct.pack(">III", *group) for group in groups)
+    return struct.pack(">HHIII", 12, 0, 16 + len(body), 0, len(groups)) + body
 
 
 class FixedWidthChain:

@@ -4,7 +4,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from conftest import pillow_font
+from conftest import cmap_format12, cmap_table, pillow_font
 
 from yt_dlp_plugins.postprocessor._nicocomments import font_files, fonts
 from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS
@@ -58,21 +58,6 @@ def test_text_width_matches_pillow(chains, font_directory):
         for face, part in chain.runs(text):
             expected += pillow_font(font_directory, face, face.units_per_em).getlength(part) * 1000 / face.units_per_em
         assert width == pytest.approx(expected, rel=0.01)
-
-
-def cmap_table(*subtables: tuple[int, int, bytes]) -> bytes:
-    header = struct.pack(">HH", 0, len(subtables))
-    offset = 4 + 8 * len(subtables)
-    records = b""
-    for platform, encoding, data in subtables:
-        records += struct.pack(">HHI", platform, encoding, offset)
-        offset += len(data)
-    return header + records + b"".join(data for _, _, data in subtables)
-
-
-def cmap_format12(groups: list[tuple[int, int, int]]) -> bytes:
-    body = b"".join(struct.pack(">III", *group) for group in groups)
-    return struct.pack(">HHIII", 12, 0, 16 + len(body), 0, len(groups)) + body
 
 
 def test_parse_cmap_maps_format12_groups():
