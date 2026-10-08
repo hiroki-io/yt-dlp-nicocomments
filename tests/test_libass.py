@@ -47,9 +47,9 @@ def render(chain: fonts.FontChain, font_directory, tmp_path, text: str = TEXT) -
         encoding="utf-8",
     )
     command = ["ffmpeg", "-v", "verbose", "-y", "-f", "lavfi", "-i", f"color=black:s={WIDTH}x{HEIGHT}:d=0.1"]
-    # A relative path avoids the colon of Windows drive letters, which the filter syntax treats as a separator.
-    fonts_option = os.path.relpath(font_directory, tmp_path).replace(os.sep, "/")
-    command += ["-vf", f"ass=test.ass:fontsdir={fonts_option}", "-frames:v", "1", "test.png"]
+    # The filter options use colons as separators, so the colon of a Windows drive letter needs escaping.
+    fonts_option = font_directory.as_posix().replace(":", "\\:")
+    command += ["-vf", f"ass=test.ass:fontsdir='{fonts_option}'", "-frames:v", "1", "test.png"]
     log = subprocess.run(
         command, cwd=tmp_path, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
     ).stderr
