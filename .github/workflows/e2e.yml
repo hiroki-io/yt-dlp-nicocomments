@@ -24,12 +24,13 @@ on:
     - cron: "47 3 * * 1"
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   download:
     name: Download and check the subtitle track on ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
