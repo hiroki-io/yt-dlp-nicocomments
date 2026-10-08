@@ -22,6 +22,9 @@ def fetch_json(ydl, url: str, data: dict | None = None, headers: dict | None = N
 
 
 def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
+    headers = dict(API_HEADERS)
+    if proxy := ydl.params.get("geo_verification_proxy"):
+        headers["Ytdl-request-proxy"] = proxy
     cause = detail = None
     for path in ("v3", "v3_guest"):
         track_id = f"AAAAAAAAAA_{round(time.time() * 1000)}"
@@ -30,7 +33,7 @@ def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
             {"actionTrackId": track_id, "i18nLanguage": WATCH_API_LANGUAGES[language]},
         )
         try:
-            api = fetch_json(ydl, url, headers=API_HEADERS)
+            api = fetch_json(ydl, url, headers=headers)
         except HTTPError as e:
             cause, detail = e, str(e)
             continue

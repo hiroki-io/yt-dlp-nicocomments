@@ -72,6 +72,18 @@ def test_watch_data_falls_back_to_the_guest_api():
     assert "/api/watch/v3_guest/sm9?" in ydl.requests[1].url
 
 
+def test_watch_data_is_requested_through_the_geo_verification_proxy():
+    ydl = FakeDownloader([http_error(403), watch_api()], {"geo_verification_proxy": "http://proxy.example"})
+    fetch_watch_data(ydl, "sm9")
+    assert [request.headers["Ytdl-request-proxy"] for request in ydl.requests] == ["http://proxy.example"] * 2
+
+
+def test_watch_data_is_requested_without_a_proxy_header_by_default():
+    ydl = FakeDownloader([watch_api()])
+    fetch_watch_data(ydl, "sm9")
+    assert "Ytdl-request-proxy" not in ydl.requests[0].headers
+
+
 @pytest.mark.parametrize(("args", "language"), [((), "ja-jp"), (("en",), "en-us"), (("zh",), "zh-tw")])
 def test_watch_data_is_requested_in_the_comment_language(args, language):
     ydl = FakeDownloader([watch_api()])
