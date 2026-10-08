@@ -78,8 +78,15 @@ jobs:
           echo "$(brew --prefix ffmpeg-full)/bin" >> "$GITHUB_PATH"
       - name: Install FFmpeg
         if: runner.os == 'Windows'
-        run: choco install ffmpeg -y --no-progress
-      # choco exits with 0 when it cannot reach the package feed.
+        shell: pwsh
+        run: |
+          # choco exits with 0 when it cannot reach the package feed.
+          foreach ($attempt in 1..5) {
+            choco install ffmpeg -y --no-progress
+            if ((Get-Command ffmpeg -ErrorAction SilentlyContinue) -and (Get-Command ffprobe -ErrorAction SilentlyContinue)) { exit 0 }
+            if ($attempt -lt 5) { Start-Sleep -Seconds (30 * $attempt) }
+          }
+          throw "Failed to install FFmpeg with Chocolatey"
       - name: Check FFmpeg
         run: ffmpeg -version && ffprobe -version
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
