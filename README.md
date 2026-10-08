@@ -71,14 +71,14 @@ yt-dlp --embed-subs --use-postprocessor "NicoComments:when=video" \
 
 Options are passed after the name, separated by semicolons:
 
-- `opacity`: comment opacity (default: `1`)
-- `default`: mark the subtitle track of the first comment language as default
-  (`true`, `yes`, `1`, `false`, `no`, or `0`; default: `true`)
-- `nglevel`: hide comments that many users added to their NG lists (`high`,
-  `medium`, `low`, or `none`; default: `medium`). `high` hides the most
-  comments.
-- `lang`: comment languages, separated by commas (`ja`, `en`, or `zh`; default:
-  `ja`). Each language becomes a separate subtitle track.
+| Option    | Values                                    | Default  | Description                                                                            |
+| --------- | ----------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| `opacity` | A number from `0` to `1`                  | `1`      | Comment opacity                                                                        |
+| `default` | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Mark the subtitle track of the first comment language as default                       |
+| `nglevel` | `high`, `medium`, `low`, or `none`        | `medium` | Hide comments that many users added to their NG lists. `high` hides the most comments. |
+| `lang`    | `ja`, `en`, or `zh`, separated by commas  | `ja`     | Comment languages. Each language becomes a separate subtitle track.                    |
+
+Example:
 
 ```sh
 --use-postprocessor "NicoComments:when=video;opacity=0.8;lang=ja,en"
