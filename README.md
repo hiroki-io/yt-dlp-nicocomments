@@ -23,7 +23,7 @@ The plugin lays out and draws comments with:
 
 The package includes these fonts under the SIL Open Font License 1.1. With
 `--embed-subs`, the plugin saves the video as an MKV file and attaches the fonts
-to it.
+to it (unless `embedfonts=false`).
 
 To keep the video file small, the plugin removes the unused glyphs from the
 fonts using [fontTools](https://github.com/fonttools/fonttools).
