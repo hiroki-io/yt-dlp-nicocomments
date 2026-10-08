@@ -102,6 +102,13 @@ def test_parse_ignores_at_commands_that_are_not_positive():
     assert chat(commands=["@0", "@5"]).at_seconds == 5.0
 
 
+def test_parse_clamps_at_commands_longer_than_the_limit():
+    assert chat(commands=["@1000000000"]).at_seconds == 1e9
+    assert chat(commands=["@1000000000.1"]).at_seconds == 1e9
+    assert chat(commands=["@1" + "0" * 304]).at_seconds == 1e9
+    assert chat(commands=["@" + "9" * 400, "@5"]).at_seconds == 1e9
+
+
 def test_parse_ignores_at_commands_with_full_width_digits():
     assert chat(commands=["@\uff11\uff10", "@5"]).at_seconds == 5.0
 

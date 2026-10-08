@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 VIEW_TIME_MS = 3000
 MAX_BODY_LENGTH = 10000
+MAX_AT_SECONDS = 10**9
 POSITIONS = ("ue", "naka", "shita")
 SIZES = ("big", "medium", "small")
 FONT_KEYS = ("defont", "gothic", "mincho")
@@ -119,7 +120,7 @@ class Chat:
             elif is_owner and at is None and (m := DURATION_COMMAND.fullmatch(command)):
                 seconds = float(m[1])
                 if seconds > 0:
-                    at = seconds
+                    at = min(seconds, MAX_AT_SECONDS)
         return cls(
             no=no,
             vpos_ms=vpos_ms,
