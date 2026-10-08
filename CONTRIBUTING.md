@@ -23,6 +23,16 @@ project, and `uv build` includes them in the distributions. After changing
 updates the license files of the fonts in `LICENSES`, which are in the
 repository.
 
+## Build dependencies
+
+The Release workflow builds the distributions with the build dependencies pinned
+in `build-requirements.txt`. After changing `[build-system]` in
+`pyproject.toml`, update `build-requirements.in` and run:
+
+```sh
+uv pip compile build-requirements.in --universal --python-version 3.10 --generate-hashes --output-file build-requirements.txt
+```
+
 ## Drift checks
 
 The Drift workflow detects changes in the comment API and the official web
