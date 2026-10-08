@@ -82,6 +82,46 @@ def test_default_option_accepts_boolean_words_in_any_case(value, expected):
     assert NicoCommentsPP(FakeDownloader(), default=value)._default is expected
 
 
+@pytest.mark.parametrize(("value", "expected"), [(True, True), (False, False), (1, True), (0, False)])
+def test_default_option_accepts_booleans_and_integers(value, expected):
+    assert NicoCommentsPP(FakeDownloader(), default=value)._default is expected
+
+
+def test_options_accept_python_values():
+    pp = NicoCommentsPP(FakeDownloader(), opacity=0.5, lang=["en", " JA", "en"])
+    assert pp._opacity == 0.5
+    assert pp._languages == ["en", "ja"]
+    assert NicoCommentsPP(FakeDownloader(), opacity=1, lang=("zh",))._languages == ["zh"]
+
+
+@pytest.mark.parametrize(
+    ("options", "message"),
+    [
+        ({"opacity": None}, "opacity must be a number from 0 to 1, not None"),
+        ({"opacity": True}, "opacity must be a number from 0 to 1, not True"),
+        ({"opacity": 10**400}, f"opacity must be a number from 0 to 1, not {10**400}"),
+        ({"opacity": b"0.5"}, "opacity must be a number from 0 to 1, not b'0.5'"),
+        ({"opacity": bytearray(b"0.5")}, r"opacity must be a number from 0 to 1, not bytearray\(b'0.5'\)"),
+        ({"default": b"1"}, "default must be one of true, yes, 1, false, no, 0, not b'1'"),
+        ({"default": 1.0}, "default must be one of true, yes, 1, false, no, 0, not 1.0"),
+        ({"nglevel": b"low"}, "nglevel must be one of high, medium, low, none, not b'low'"),
+        ({"lang": [b"ja"]}, "lang must be one of ja, en, zh, not b'ja'"),
+        ({"default": None}, "default must be one of true, yes, 1, false, no, 0, not None"),
+        ({"default": 2}, "default must be one of true, yes, 1, false, no, 0, not 2"),
+        ({"nglevel": 1}, "nglevel must be one of high, medium, low, none, not 1"),
+        ({"nglevel": None}, "nglevel must be one of high, medium, low, none, not None"),
+        ({"lang": ["ja", None]}, "lang must be one of ja, en, zh, not None"),
+        ({"lang": ["ja", 5]}, "lang must be one of ja, en, zh, not 5"),
+        ({"lang": []}, r"lang must be one of ja, en, zh, not \[\]"),
+        ({"lang": 5}, "lang must be one of ja, en, zh, not 5"),
+        ({"lang": b"ja"}, "lang must be one of ja, en, zh, not b'ja'"),
+    ],
+)
+def test_invalid_python_values_raise_option_value_error(options, message):
+    with pytest.raises(optparse.OptionValueError, match=f"^NicoComments: {message}$"):
+        NicoCommentsPP(FakeDownloader(), **options)
+
+
 def test_comments_are_added_as_the_first_subtitle_track(fake_fonts_and_comments):
     ydl = downloader()
     info = video_info(requested_subtitles={"comments": {"ext": "json"}, "en": {"ext": "vtt"}})

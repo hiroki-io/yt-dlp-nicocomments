@@ -19,26 +19,50 @@ LANGUAGE_NAMES = {"ja": "Japanese", "en": "English", "zh": "Chinese"}
 BOOLEAN_VALUES = {"true": True, "yes": True, "1": True, "false": False, "no": False, "0": False}
 
 
-def parse_opacity_option(value: str) -> float:
+def format_option_value(value: object) -> str:
+    return value if isinstance(value, str) else repr(value)
+
+
+def parse_opacity_option(value: str | int | float) -> float:
     try:
-        result = float(value)
-    except ValueError:
+        result = math.nan if isinstance(value, (bool, bytes, bytearray)) else float(value)
+    except (TypeError, ValueError, OverflowError):
         result = math.nan
     if not 0 <= result <= 1:
-        raise optparse.OptionValueError(f"NicoComments: opacity must be a number from 0 to 1, not {value}")
+        raise optparse.OptionValueError(
+            f"NicoComments: opacity must be a number from 0 to 1, not {format_option_value(value)}"
+        )
     return result
 
 
-def parse_choice_option(name: str, value: str, choices: Collection[str]):
-    key = value.lower()
+def choice_option_error(name: str, value: object, choices: Collection[str]) -> optparse.OptionValueError:
+    return optparse.OptionValueError(
+        f"NicoComments: {name} must be one of {', '.join(choices)}, not {format_option_value(value)}"
+    )
+
+
+def parse_choice_option(name: str, value: object, choices: Collection[str]):
+    key = value.lower() if isinstance(value, str) else None
     if key not in choices:
-        raise optparse.OptionValueError(f"NicoComments: {name} must be one of {', '.join(choices)}, not {value}")
+        raise choice_option_error(name, value, choices)
     return choices[key] if isinstance(choices, Mapping) else key
 
 
-def parse_languages_option(value: str) -> list[str]:
+def parse_default_option(value: str | int) -> bool:
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    return parse_choice_option("default", value, BOOLEAN_VALUES)
+
+
+def parse_languages_option(value: str | list[str] | tuple[str, ...]) -> list[str]:
+    values = value.split(",") if isinstance(value, str) else value
+    if not isinstance(values, (list, tuple)) or not values:
+        raise choice_option_error("lang", value, WATCH_API_LANGUAGES.keys())
     languages = [
-        parse_choice_option("lang", language.strip(), WATCH_API_LANGUAGES.keys()) for language in value.split(",")
+        parse_choice_option(
+            "lang", language.strip() if isinstance(language, str) else language, WATCH_API_LANGUAGES.keys()
+        )
+        for language in values
     ]
     return list(dict.fromkeys(languages))
 
@@ -49,7 +73,7 @@ class NicoCommentsPP(PostProcessor):
             raise optparse.OptionValueError(f"NicoComments: unknown options: {', '.join(kwargs)}")
         super().__init__(downloader)
         self._opacity = parse_opacity_option(opacity)
-        self._default = parse_choice_option("default", default, BOOLEAN_VALUES)
+        self._default = parse_default_option(default)
         self._ng_score_threshold = parse_choice_option("nglevel", nglevel, NG_SCORE_THRESHOLDS)
         self._languages = parse_languages_option(lang)
 
