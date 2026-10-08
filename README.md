@@ -72,7 +72,10 @@ yt-dlp --embed-subs --use-postprocessor "NicoComments:when=video" \
 `when=video` is necessary because the plugin must run before yt-dlp writes the
 subtitles.
 
-Options are passed after the name, separated by semicolons:
+### Options
+
+Options are passed after the postprocessor name (`NicoComments:`), separated by
+semicolons:
 
 | Option    | Values                                    | Default  | Description                                                                            |
 | --------- | ----------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
