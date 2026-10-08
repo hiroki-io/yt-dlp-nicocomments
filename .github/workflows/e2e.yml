@@ -28,13 +28,21 @@ permissions: {}
 
 jobs:
   download:
-    name: Download and check the subtitle track on ${{ matrix.os }}
+    name: Download on ${{ matrix.os }} / yt-dlp ${{ matrix.yt-dlp }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        yt-dlp: [locked]
+        include:
+          - os: ubuntu-latest
+            yt-dlp: stable
+            uv-options: --upgrade-package yt-dlp
+          - os: ubuntu-latest
+            yt-dlp: nightly
+            uv-options: --upgrade-package yt-dlp --prerelease allow
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -63,8 +71,12 @@ jobs:
           path: yt_dlp_plugins/postprocessor/_nicocomments/font_data
           key: fonts-${{ hashFiles('yt_dlp_plugins/postprocessor/_nicocomments/font_files.py') }}
       - name: Run yt-dlp with placeholder media
+        env:
+          UV_OPTIONS: ${{ matrix.uv-options || '--locked' }}
         run: |
-          uv run --locked python tools/e2e.py --embed-subs --use-postprocessor "NicoComments:when=video" -o "video.%(ext)s" https://www.nicovideo.jp/watch/sm9
+          read -ra uv_options <<< "$UV_OPTIONS"
+          uv run "${uv_options[@]}" python -c "import yt_dlp.version as v; print(f'yt-dlp {v.__version__}')"
+          uv run "${uv_options[@]}" python tools/e2e.py --embed-subs --use-postprocessor "NicoComments:when=video" -o "video.%(ext)s" https://www.nicovideo.jp/watch/sm9
       # FFprobe on Windows can end lines with CRLF.
       - name: Check the comment subtitle track
         run: |
