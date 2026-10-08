@@ -25,6 +25,9 @@ The package includes these fonts under the SIL Open Font License 1.1. With
 `--embed-subs`, the plugin saves the video as an MKV file and attaches the fonts
 to it.
 
+To keep the video file small, the plugin removes the unused glyphs from the
+fonts using [fontTools](https://github.com/fonttools/fonttools).
+
 ## Install
 
 If yt-dlp is installed with uv or pip, install the plugin in the same
@@ -52,6 +55,10 @@ To make sure that the release workflow of this repository built the file, run:
 ```sh
 gh attestation verify yt_dlp_nicocomments-*.whl -R hiroki-io/yt-dlp-nicocomments
 ```
+
+The yt-dlp executable cannot load fontTools from the plugin directory. To attach
+smaller fonts, install fontTools so that the `pyftsubset` command is on `PATH`,
+for example with `brew install fonttools` or `pipx install fonttools`.
 
 To use the code from a clone of this repository, download the fonts and put the
 repository in a plugin directory:

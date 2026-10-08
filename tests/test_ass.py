@@ -11,7 +11,9 @@ from yt_dlp_plugins.postprocessor._nicocomments.ass import (
     ass_time,
     build_ass,
     comment_opacity,
+    drawn_chars,
     paint_order,
+    run_chars,
     slot_events,
 )
 from yt_dlp_plugins.postprocessor._nicocomments.font_files import FontFile
@@ -88,7 +90,7 @@ def test_slot_events_skip_blank_lines():
 
 @pytest.mark.parametrize(("shown_ms", "hidden_ms"), [(1000, 1004), (1000, 1000), (2000, 1000)])
 def test_slot_events_are_empty_when_the_end_is_not_after_the_start(shown_ms, hidden_ms):
-    assert slot_events(make_slot(shown_ms=shown_ms, hidden_ms=hidden_ms), STAGE, 1.0, 0, 1.0) == ([], set())
+    assert slot_events(make_slot(shown_ms=shown_ms, hidden_ms=hidden_ms), STAGE, 1.0, 0, 1.0) == ([], {})
 
 
 @pytest.mark.parametrize(("commands", "border"), [([], "&H000000&"), (["black"], "&HFFFFFF&")])
@@ -122,6 +124,22 @@ def test_ass_escape_escapes_backslashes_and_braces():
     assert ass_escape("a\\b{c}") == "a\\\u200bb\\{c\\}"
 
 
+def test_drawn_chars_include_the_escapes_and_the_composed_chars():
+    assert drawn_chars("e\u0301\\") == {"e", "\u0301", "\u00e9", "\\", "\u200b"}
+
+
+def test_run_chars_add_the_chars_missing_from_the_run_font_to_the_fonts_that_have_them():
+    fonts = [FontFile(name, f"https://example.com/{name}.otf", "") for name in ("Main", "Math", "Symbols", "Other")]
+    cmaps = [{ord("a"): 1}, {ord("\u0338"): 1}, {ord("\u0338"): 1}, {ord("b"): 1}]
+    faces = [Face(font, 1000, 800, 1000, [500], cmap) for font, cmap in zip(fonts, cmaps, strict=True)]
+    chain = FontChain(faces, (800, 200))
+    assert run_chars(chain, chain.runs("a\u0338")) == {
+        fonts[0]: {"a", "\u0338"},
+        fonts[1]: {"\u0338"},
+        fonts[2]: {"\u0338"},
+    }
+
+
 def test_later_moving_comment_is_painted_over_earlier_fixed_comment():
     fixed = make_slot(commands=["ue"], vpos_ms=10000, no=1)
     moving = make_slot(vpos_ms=11000, no=2)
@@ -133,14 +151,14 @@ def test_comments_in_the_same_centisecond_are_painted_by_number():
     assert paint_order([first, second]) == [second, first]
 
 
-def test_build_ass_returns_the_fonts_of_the_drawn_lines():
+def test_build_ass_returns_the_chars_of_the_drawn_lines_for_each_font():
     blank = make_slot(body="\u3000\u2004")
     hidden = make_slot(body="b", shown_ms=1000, hidden_ms=1000)
-    _, fonts = build_ass([SlotLayer(0, False, [blank, hidden])], 1920, 1080, 1.0, "ja")
-    assert fonts == set()
-    slot = make_slot(body="a")
-    _, fonts = build_ass([SlotLayer(0, False, [slot])], 1920, 1080, 1.0, "ja")
-    assert fonts == {slot.font_chain.faces[0].font}
+    _, chars = build_ass([SlotLayer(0, False, [blank, hidden])], 1920, 1080, 1.0, "ja")
+    assert chars == {}
+    slots = [make_slot(body="ab"), make_slot(body="c\\", no=2)]
+    _, chars = build_ass([SlotLayer(0, False, slots)], 1920, 1080, 1.0, "ja")
+    assert chars == {slots[0].font_chain.faces[0].font: {"a", "b", "c", "\\", "\u200b"}}
 
 
 def test_ass_runs_write_synthetic_bold_for_each_run():

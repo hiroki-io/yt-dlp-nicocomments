@@ -1,7 +1,8 @@
+import unicodedata
 from dataclasses import dataclass
 
 from .comments import Chat
-from .font_files import FontFile
+from .font_files import FontFile, add_font_chars
 from .fonts import Face, FontChain
 from .layout import STAGE_HEIGHT, STAGE_WIDTH, STROKE_WIDTH, Slot, SlotLayer
 
@@ -63,6 +64,26 @@ def ass_escape(text: str) -> str:
     return text.replace("\\", "\\\u200b").replace("{", "\\{").replace("}", "\\}")
 
 
+def drawn_chars(text: str) -> set[str]:
+    escaped = ass_escape(text)
+    # HarfBuzz composes combining sequences into the precomposed glyphs that the font has.
+    return {*escaped, *unicodedata.normalize("NFC", escaped)}
+
+
+def run_chars(chain: FontChain, runs: list[tuple[Face, str]]) -> dict[FontFile, set[str]]:
+    chars: dict[FontFile, set[str]] = {}
+    for face, text in runs:
+        chars.setdefault(face.font, set()).update(drawn_chars(text))
+        # libass draws the chars that the run font does not have with any font that has them,
+        # so every such font keeps them.
+        for char in set(ass_escape(text)):
+            if not face.has_char(char):
+                for fallback in chain.faces:
+                    if fallback.has_char(char):
+                        chars.setdefault(fallback.font, set()).add(char)
+    return chars
+
+
 def comment_opacity(chat: Chat, translucent: bool) -> float:
     live = LIVE_OPACITY if chat.live else 1.0
     return live * (TRANSLUCENT_LAYER_OPACITY if translucent else 1.0)
@@ -70,11 +91,11 @@ def comment_opacity(chat: Chat, translucent: bool) -> float:
 
 def slot_events(
     slot: Slot, viewport: Viewport, video_scale: float, ass_layer: int, opacity: float
-) -> tuple[list[str], set[FontFile]]:
+) -> tuple[list[str], dict[FontFile, set[str]]]:
     start_cs = round(slot.shown_ms / 10)
     end_cs = round(slot.hidden_ms / 10)
     if end_cs <= start_cs:
-        return [], set()
+        return [], {}
     chat = slot.chat
     em = slot.em
     border = "FFFFFF" if chat.color == "000000" else "000000"
@@ -87,12 +108,12 @@ def slot_events(
     x1 = (slot.screen_x_at(end_cs * 10) + slot.text_offset_x - viewport.x) * video_scale
 
     events = []
-    fonts = set()
+    chars: dict[FontFile, set[str]] = {}
     for line, baseline in zip(chat.lines, slot.line_baselines(), strict=True):
         if not line.strip():
             continue
         runs = slot.font_chain.runs(line)
-        fonts.update(face.font for face, _ in runs)
+        add_font_chars(chars, run_chars(slot.font_chain, runs))
         y = (line_top(runs, em, baseline) - viewport.y) * video_scale
         if chat.is_fixed:
             placement = f"\\an7\\pos({x0:.2f},{y:.2f})"
@@ -102,7 +123,7 @@ def slot_events(
             f"Dialogue: {ass_layer},{ass_time(start_cs)},{ass_time(end_cs)},Default,,0,0,0,,"
             f"{{{placement}{style}}}{ass_runs(slot.font_chain, runs, em, video_scale)}"
         )
-    return events, fonts
+    return events, chars
 
 
 def ass_runs(chain: FontChain, runs: list[tuple[Face, str]], em: float, video_scale: float) -> str:
@@ -140,16 +161,16 @@ def paint_order(slots: list[Slot]) -> list[Slot]:
 
 def build_ass(
     layers: list[SlotLayer], width: int, height: int, opacity: float, language: str
-) -> tuple[str, set[FontFile]]:
+) -> tuple[str, dict[FontFile, set[str]]]:
     viewport = Viewport.for_video(width, height)
     video_scale = height / viewport.height
     top_index = max((layer.index for layer in layers), default=0)
     events = []
-    fonts = set()
+    chars: dict[FontFile, set[str]] = {}
     for layer in sorted(layers, key=lambda layer: -layer.index):
         for slot in paint_order(layer.slots):
             slot_opacity = comment_opacity(slot.chat, layer.translucent) * opacity
-            new_events, new_fonts = slot_events(slot, viewport, video_scale, top_index - layer.index, slot_opacity)
+            new_events, new_chars = slot_events(slot, viewport, video_scale, top_index - layer.index, slot_opacity)
             events += new_events
-            fonts |= new_fonts
-    return ass_header(width, height, language) + "\n".join(events) + "\n", fonts
+            add_font_chars(chars, new_chars)
+    return ass_header(width, height, language) + "\n".join(events) + "\n", chars

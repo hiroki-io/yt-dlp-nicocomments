@@ -10,6 +10,7 @@ from ._nicocomments.api import WATCH_API_LANGUAGES, CommentAPIError, fetch_comme
 from ._nicocomments.ass import build_ass
 from ._nicocomments.attachments import ASS_CONTAINER, EMBEDDING_KEY, CommentEmbedding, NicoCommentFontsPP
 from ._nicocomments.filters import NG_SCORE_THRESHOLDS
+from ._nicocomments.font_files import FontFile, add_font_chars
 from ._nicocomments.fonts import FontError, load_font_chains
 from ._nicocomments.hls import PlaylistError, media_duration
 from ._nicocomments.pipeline import layout_comments
@@ -110,7 +111,7 @@ class NicoCommentsPP(PostProcessor):
 
         content_length_ms = self._content_length_ms(info)
         comment_subtitles = {}
-        fonts = set()
+        font_chars: dict[FontFile, set[str]] = {}
         for language, comments in fetched.items():
             slot_layers = layout_comments(
                 comments, font_chains, content_length_ms, self._ng_score_threshold, info["id"]
@@ -119,8 +120,8 @@ class NicoCommentsPP(PostProcessor):
             key = f"{language}-comments"
             name = f"{LANGUAGE_NAMES[language]} comments"
             self.to_screen(f"Laid out {sum(len(slot_layer.slots) for slot_layer in slot_layers)} {name}")
-            data, used_fonts = build_ass(slot_layers, width, height, self._opacity, language)
-            fonts |= used_fonts
+            data, used_chars = build_ass(slot_layers, width, height, self._opacity, language)
+            add_font_chars(font_chars, used_chars)
             comment_subtitles[key] = {"ext": "ass", "name": name, "data": data}
 
         other_subtitles = dict(info.get("requested_subtitles") or {})
@@ -130,7 +131,7 @@ class NicoCommentsPP(PostProcessor):
             info.setdefault(EMBEDDING_KEY, []).append(
                 CommentEmbedding(
                     frozenset(subtitle["name"] for subtitle in comment_subtitles.values()),
-                    frozenset(fonts) if self._fonts else frozenset(),
+                    {font: frozenset(chars) for font, chars in font_chars.items()} if self._fonts else {},
                     self._default,
                 )
             )

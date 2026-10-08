@@ -50,7 +50,7 @@ def used_fonts(monkeypatch):
     fonts_of_videos = []
 
     def build_ass(*args):
-        return "[Script Info]\n", fonts_of_videos.pop(0) if fonts_of_videos else set()
+        return "[Script Info]\n", fonts_of_videos.pop(0) if fonts_of_videos else {}
 
     monkeypatch.setattr(nicocomments, "build_ass", build_ass)
     return fonts_of_videos
@@ -219,23 +219,23 @@ def test_font_errors_raise_postprocessing_error(fake_fonts_and_comments, monkeyp
         NicoCommentsPP(downloader()).run(video_info())
 
 
-def test_used_fonts_and_comment_tracks_are_saved_for_the_fonts_postprocessor(fake_fonts_and_comments, used_fonts):
-    used_fonts += [{font_files.SANS_BOLD}, {font_files.MATH}]
+def test_used_chars_and_comment_tracks_are_saved_for_the_fonts_postprocessor(fake_fonts_and_comments, used_fonts):
+    used_fonts += [{font_files.SANS_BOLD: {"a"}, font_files.MATH: {"x"}}, {font_files.SANS_BOLD: {"b"}}]
     info = video_info()
     NicoCommentsPP(downloader(), lang="ja,en").run(info)
     [embedding] = info[EMBEDDING_KEY]
     assert embedding.track_names == {"Japanese comments", "English comments"}
-    assert embedding.fonts == {font_files.SANS_BOLD, font_files.MATH}
+    assert embedding.fonts == {font_files.SANS_BOLD: {"a", "b"}, font_files.MATH: {"x"}}
     assert embedding.default
 
 
 def test_fonts_are_not_saved_with_the_fonts_option_off(fake_fonts_and_comments, used_fonts):
-    used_fonts.append({font_files.SANS_BOLD})
+    used_fonts.append({font_files.SANS_BOLD: {"a"}})
     info = video_info()
     NicoCommentsPP(downloader(), fonts="false").run(info)
     [embedding] = info[EMBEDDING_KEY]
     assert embedding.track_names == {"Japanese comments"}
-    assert embedding.fonts == set()
+    assert embedding.fonts == {}
     assert embedding.default
 
 

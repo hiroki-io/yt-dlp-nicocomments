@@ -1,5 +1,9 @@
+import functools
 import hashlib
+import io
+import shutil
 import struct
+import sys
 import zipfile
 from pathlib import Path
 
@@ -175,3 +179,70 @@ def test_zipped_font_is_extracted_to_the_directory(tmp_path, zipped_package_dire
     path = fonts.bundled_font_path(TEST_FONT, zipped_package_directory, tmp_path)
     assert path == tmp_path / "Test-Regular.otf"
     assert path.read_bytes() == FONT_DATA
+
+
+@pytest.fixture
+def pyftsubset():
+    command = shutil.which("pyftsubset")
+    if command is None:
+        pytest.skip("pyftsubset is not installed")
+    return command
+
+
+@pytest.fixture
+def ttfont():
+    return pytest.importorskip("fontTools.ttLib").TTFont
+
+
+def test_font_subsetter_prefers_the_fonttools_module(monkeypatch):
+    monkeypatch.setattr(fonts.importlib.util, "find_spec", lambda name: object())
+    assert fonts.font_subsetter() is fonts.subset_font
+
+
+def test_font_subsetter_uses_pyftsubset_without_the_fonttools_module(monkeypatch):
+    monkeypatch.setattr(fonts.importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(fonts.shutil, "which", lambda name: f"/bin/{name}")
+    subsetter = fonts.font_subsetter()
+    assert isinstance(subsetter, functools.partial)
+    assert (subsetter.func, subsetter.args) == (fonts.subset_font_with_command, ("/bin/pyftsubset",))
+
+
+def test_font_subsetter_is_none_without_fonttools(monkeypatch):
+    monkeypatch.setattr(fonts.importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(fonts.shutil, "which", lambda name: None)
+    assert fonts.font_subsetter() is None
+
+
+def font_names(font):
+    return {
+        (record.nameID, record.langID, record.toUnicode()) for record in font["name"].names if record.platformID == 3
+    }
+
+
+@pytest.mark.parametrize("font", [font_files.SANS_BOLD, font_files.EMOJI])
+def test_pyftsubset_and_the_fonttools_module_keep_the_used_chars_and_the_names(
+    font_directory, pyftsubset, ttfont, font
+):
+    data = (font_directory / font.filename).read_bytes()
+    chars = "コメントx\U0001f600"
+    original = ttfont(io.BytesIO(data))
+    for subset in (fonts.subset_font(data, chars), fonts.subset_font_with_command(pyftsubset, data, chars)):
+        subset_font = ttfont(io.BytesIO(subset))
+        assert subset_font.getBestCmap().keys() == {ord(char) for char in chars} & original.getBestCmap().keys()
+        assert font_names(subset_font) == font_names(original)
+
+
+def test_pyftsubset_failure_is_a_font_error(pyftsubset):
+    with pytest.raises(fonts.FontError, match="pyftsubset exited with code 1: "):
+        fonts.subset_font_with_command(pyftsubset, b"broken", "a")
+
+
+def test_missing_pyftsubset_is_a_font_error(tmp_path):
+    with pytest.raises(fonts.FontError, match="cannot run pyftsubset: "):
+        fonts.subset_font_with_command(str(tmp_path / "pyftsubset"), b"font", "a")
+
+
+def test_fonttools_import_failure_is_a_font_error(monkeypatch):
+    monkeypatch.setitem(sys.modules, "fontTools", None)
+    with pytest.raises(fonts.FontError, match="ModuleNotFoundError"):
+        fonts.subset_font(b"font", "a")

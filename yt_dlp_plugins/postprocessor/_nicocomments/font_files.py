@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,11 @@ class FontFile:
     @property
     def mimetype(self) -> str:
         return MIMETYPES[Path(self.url).suffix]
+
+
+def add_font_chars(chars: dict[FontFile, set[str]], new_chars: Mapping[FontFile, Iterable[str]]) -> None:
+    for font, font_chars in new_chars.items():
+        chars.setdefault(font, set()).update(font_chars)
 
 
 @dataclass(frozen=True)

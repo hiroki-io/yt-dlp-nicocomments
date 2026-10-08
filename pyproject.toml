@@ -25,7 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Multimedia :: Video",
 ]
-dependencies = []
+dependencies = ["fonttools>=4.65.0"]
 
 [project.urls]
 Homepage = "https://github.com/hiroki-io/yt-dlp-nicocomments"

@@ -1,13 +1,21 @@
+import functools
 import hashlib
 import importlib.resources
+import importlib.util
+import io
 import math
+import shutil
 import struct
+import subprocess
+import tempfile
 import unicodedata
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from yt_dlp.utils import Popen
 
 from .font_files import (
     CHAIN_FONTS,
@@ -178,6 +186,58 @@ def bundled_font_path(font: FontFile, package_directory: "Traversable", director
     path = directory / font.filename
     path.write_bytes(resource.read_bytes())
     return path
+
+
+# The options keep the OpenType features and the names, which libass uses to select the fonts.
+SUBSET_OPTIONS = ("--layout-features=*", "--name-IDs=*", "--name-languages=*", "--notdef-outline")
+
+
+def font_subsetter() -> Callable[[bytes, Iterable[str]], bytes] | None:
+    if importlib.util.find_spec("fontTools") is not None:
+        return subset_font
+    # The fonttools packages of Homebrew and other package managers use their own Python, so only the command works.
+    if command := shutil.which("pyftsubset"):
+        return functools.partial(subset_font_with_command, command)
+    return None
+
+
+def subset_font(data: bytes, chars: Iterable[str]) -> bytes:
+    try:
+        # yt-dlp imports the plugin on every run, and fontTools takes tens of milliseconds to import.
+        from fontTools import subset
+
+        options = subset.Options()
+        options.parse_opts(list(SUBSET_OPTIONS))
+        font = subset.load_font(io.BytesIO(data), options)
+        subsetter = subset.Subsetter(options)
+        subsetter.populate(unicodes={ord(char) for char in chars})
+        subsetter.subset(font)
+        output = io.BytesIO()
+        subset.save_font(font, output, options)
+    except Exception as e:
+        raise FontError(repr(e)) from e
+    return output.getvalue()
+
+
+def subset_font_with_command(command: str, data: bytes, chars: Iterable[str]) -> bytes:
+    try:
+        with tempfile.TemporaryDirectory(prefix="yt-dlp-nicocomments-", ignore_cleanup_errors=True) as directory:
+            source, unicodes, output = (Path(directory, name) for name in ("source", "unicodes.txt", "output"))
+            source.write_bytes(data)
+            unicodes.write_text("\n".join(f"{ord(char):X}" for char in chars), encoding="ascii")
+            _, stderr, returncode = Popen.run(
+                [command, source, f"--unicodes-file={unicodes}", f"--output-file={output}", *SUBSET_OPTIONS],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            if returncode != 0:
+                raise FontError(f"pyftsubset exited with code {returncode}: {stderr.strip()}")
+            return output.read_bytes()
+    except OSError as e:
+        raise FontError(f"cannot run pyftsubset: {e}") from e
 
 
 @cache

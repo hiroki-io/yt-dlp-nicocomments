@@ -5,12 +5,13 @@ import subprocess
 
 import pytest
 from conftest import pillow_font
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 from yt_dlp_plugins.postprocessor._nicocomments import font_files, fonts
 from yt_dlp_plugins.postprocessor._nicocomments.ass import (
     ass_header,
     ass_runs,
+    drawn_chars,
     line_top,
 )
 from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS
@@ -57,7 +58,10 @@ def render(chain: fonts.FontChain, font_directory, tmp_path, text: str = TEXT) -
     for line in log.splitlines():
         if match := FONT_SELECTION.search(line):
             selected.setdefault(match[1], match[2])
-    return Image.open(tmp_path / "test.png"), selected
+    image = Image.open(tmp_path / "test.png")
+    # The next render overwrites test.png, so the image needs reading now.
+    image.load()
+    return image, selected
 
 
 def render_with_pillow(chain: fonts.FontChain, font_directory) -> Image.Image:
@@ -98,3 +102,22 @@ def test_libass_draws_emoji_with_the_emoji_face(chains, font_directory, key, tmp
     drawn, selected = render(chain, font_directory, tmp_path, "\U0001f600")
     assert selected.get(font_files.EMOJI.ass_name) == POSTSCRIPT_NAMES[font_files.EMOJI], selected
     assert ink_bounds(drawn) is not None
+
+
+@pytest.mark.parametrize("key", FONT_KEYS)
+@pytest.mark.parametrize("text", [TEXT, "e\u0301か\u3099"])
+def test_libass_draws_the_same_image_with_the_subset_fonts(chains, font_directory, key, text, tmp_path):
+    pytest.importorskip("fontTools")
+    chain = chains[key]
+    subset_directory = tmp_path / "fonts"
+    subset_directory.mkdir()
+    chars = {}
+    for face, part in chain.runs(text):
+        font_files.add_font_chars(chars, {face.font: drawn_chars(part)})
+    for font, font_chars in chars.items():
+        data = (font_directory / font.filename).read_bytes()
+        (subset_directory / font.filename).write_bytes(fonts.subset_font(data, font_chars))
+    expected, expected_selected = render(chain, font_directory, tmp_path, text)
+    drawn, selected = render(chain, subset_directory, tmp_path, text)
+    assert selected == expected_selected
+    assert ImageChops.difference(drawn.convert("RGB"), expected.convert("RGB")).getbbox() is None

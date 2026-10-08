@@ -1,22 +1,27 @@
 import os
 import tempfile
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from yt_dlp.postprocessor.ffmpeg import FFmpegPostProcessor, FFmpegPostProcessorError
 from yt_dlp.utils import PostProcessingError, prepend_extension
 
-from .font_files import FontFile
-from .fonts import bundled_font_path, font_data_directory
+from .font_files import FontFile, add_font_chars
+from .fonts import FontError, bundled_font_path, font_data_directory, font_subsetter
+
+if TYPE_CHECKING:
+    from importlib.resources.abc import Traversable
 
 EMBEDDING_KEY = "__nicocomments_embedding"
 ASS_CONTAINER = "mkv"
 
 
-@dataclass(frozen=True)
+@dataclass
 class CommentEmbedding:
     track_names: frozenset[str]
-    fonts: frozenset[FontFile]
+    fonts: dict[FontFile, frozenset[str]]
     default: bool
 
 
@@ -49,7 +54,9 @@ class NicoCommentFontsPP(FFmpegPostProcessor):
         if not tracks:
             return [], info
 
-        fonts = {font for embedding, _ in tracks for font in embedding.fonts}
+        fonts: dict[FontFile, set[str]] = {}
+        for embedding, _ in tracks:
+            add_font_chars(fonts, embedding.fonts)
         attachable = info["ext"] == ASS_CONTAINER and any(
             subtitles[index].get("codec_name") == "ass" for _, indexes in tracks for index in indexes
         )
@@ -80,15 +87,19 @@ class NicoCommentFontsPP(FFmpegPostProcessor):
                 os.remove(temporary_path)
         return [], info
 
-    @staticmethod
-    def _attach_opts(fonts: set[FontFile], directory: Path) -> list[str]:
+    def _attach_opts(self, fonts: dict[FontFile, set[str]], directory: Path) -> list[str]:
         opts = []
         package_directory = font_data_directory()
+        subsetter = font_subsetter()
         for font in sorted(fonts, key=lambda font: font.filename):
             # The fonts are already attached when the subtitles are embedded again in the same file.
             opts += ["-map", f"-0:t:m:filename:{font.filename}"]
             # FFmpeg takes the filename tag from the text after the last slash, also on Windows.
-            path = bundled_font_path(font, package_directory, directory)
+            path = (
+                self._subset_font_path(font, fonts[font], subsetter, package_directory, directory)
+                if subsetter
+                else bundled_font_path(font, package_directory, directory)
+            )
             opts += [
                 "-attach",
                 FFmpegPostProcessor._ffmpeg_filename_argument(path.as_posix()),
@@ -96,3 +107,20 @@ class NicoCommentFontsPP(FFmpegPostProcessor):
                 f"mimetype={font.mimetype}",
             ]
         return opts
+
+    def _subset_font_path(
+        self,
+        font: FontFile,
+        chars: set[str],
+        subsetter: Callable[[bytes, Iterable[str]], bytes],
+        package_directory: "Traversable",
+        directory: Path,
+    ) -> Path:
+        try:
+            data = subsetter((package_directory / font.filename).read_bytes(), chars)
+        except FontError as error:
+            self.report_warning(f"Attaching the whole {font.filename} because it cannot be subset: {error}")
+            return bundled_font_path(font, package_directory, directory)
+        path = directory / font.filename
+        path.write_bytes(data)
+        return path
