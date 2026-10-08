@@ -130,14 +130,14 @@ class FontChain:
         return next((face for face in self.faces if face.has_char(char)), self.faces[0])
 
     def runs(self, text: str) -> list[tuple[Face, str]]:
-        runs: list[tuple[Face, str]] = []
+        runs: list[tuple[Face, list[str]]] = []
         for char, extends in zip(text, extends_cluster(text), strict=True):
             face = runs[-1][0] if extends and runs else self.face_for(char)
             if runs and runs[-1][0] is face:
-                runs[-1] = (face, runs[-1][1] + char)
+                runs[-1][1].append(char)
             else:
-                runs.append((face, char))
-        return runs
+                runs.append((face, [char]))
+        return [(face, "".join(chars)) for face, chars in runs]
 
     def text_width(self, text: str, px: int) -> float:
         width = 0.0
