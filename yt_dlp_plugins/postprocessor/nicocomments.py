@@ -70,16 +70,23 @@ def parse_languages_option(value: str | list[str] | tuple[str, ...]) -> list[str
 
 class NicoCommentsPP(PostProcessor):
     def __init__(
-        self, downloader=None, opacity="1", default="true", nglevel="medium", lang="ja", fonts="true", **kwargs
+        self,
+        downloader=None,
+        opacity="1",
+        defaulttrack="true",
+        nglevel="medium",
+        lang="ja",
+        embedfonts="true",
+        **kwargs,
     ):
         if kwargs:
             raise optparse.OptionValueError(f"NicoComments: unknown options: {', '.join(kwargs)}")
         super().__init__(downloader)
         self._opacity = parse_opacity_option(opacity)
-        self._default = parse_boolean_option("default", default)
+        self._default_track = parse_boolean_option("defaulttrack", defaulttrack)
         self._ng_score_threshold = parse_choice_option("nglevel", nglevel, NG_SCORE_THRESHOLDS)
         self._languages = parse_languages_option(lang)
-        self._fonts = parse_boolean_option("fonts", fonts)
+        self._embed_fonts = parse_boolean_option("embedfonts", embedfonts)
 
     def run(self, info):
         if info.get("extractor_key") != "Niconico":
@@ -131,8 +138,8 @@ class NicoCommentsPP(PostProcessor):
             info.setdefault(EMBEDDING_KEY, []).append(
                 CommentEmbedding(
                     frozenset(subtitle["name"] for subtitle in comment_subtitles.values()),
-                    {font: frozenset(chars) for font, chars in font_chars.items()} if self._fonts else {},
-                    self._default,
+                    {font: frozenset(chars) for font, chars in font_chars.items()} if self._embed_fonts else {},
+                    self._default_track,
                 )
             )
         return [], info

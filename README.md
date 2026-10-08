@@ -84,13 +84,13 @@ subtitles.
 Options are passed after the postprocessor name (`NicoComments:`), separated by
 semicolons:
 
-| Option    | Values                                    | Default  | Description                                                                            |
-| --------- | ----------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
-| `lang`    | `ja`, `en`, or `zh`, separated by commas  | `ja`     | Comment languages. Each language becomes a separate subtitle track.                    |
-| `nglevel` | `high`, `medium`, `low`, or `none`        | `medium` | Hide comments that many users added to their NG lists. `high` hides the most comments. |
-| `opacity` | A number from `0` to `1`                  | `1`      | Comment opacity                                                                        |
-| `fonts`   | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Attach the fonts to the video file when `--embed-subs` is used                         |
-| `default` | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Mark the subtitle track of the first comment language as default                       |
+| Option         | Values                                    | Default  | Description                                                                            |
+| -------------- | ----------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| `lang`         | `ja`, `en`, or `zh`, separated by commas  | `ja`     | Comment languages. Each language becomes a separate subtitle track.                    |
+| `nglevel`      | `high`, `medium`, `low`, or `none`        | `medium` | Hide comments that many users added to their NG lists. `high` hides the most comments. |
+| `opacity`      | A number from `0` to `1`                  | `1`      | Comment opacity                                                                        |
+| `embedfonts`   | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Attach the fonts to the video file when `--embed-subs` is used                         |
+| `defaulttrack` | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Mark the subtitle track of the first comment language as default                       |
 
 Example:
 
