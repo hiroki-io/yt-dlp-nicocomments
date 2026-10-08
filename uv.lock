@@ -270,7 +270,6 @@ wheels = [
 
 [[package]]
 name = "yt-dlp-nicocomments"
-version = "0.1.0"
 source = { editable = "." }
 
 [package.dev-dependencies]

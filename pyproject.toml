@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
 name = "yt-dlp-nicocomments"
-version = "0.1.0"
+dynamic = ["version"]
 description = "yt-dlp plugin that converts Niconico comments to ASS subtitles"
 readme = "README.md"
 license = "MIT AND OFL-1.1"
@@ -35,6 +35,9 @@ Releases = "https://github.com/hiroki-io/yt-dlp-nicocomments/releases"
 [dependency-groups]
 dev = ["pillow", "pytest", "ruff", "yt-dlp"]
 
+[tool.hatch.version]
+source = "vcs"
+
 [tool.hatch.build.targets.sdist]
 include = ["/yt_dlp_plugins", "/tests", "/tools/drift/official.json", "/tools/font_data.py", "/hatch_build.py"]
 
@@ -45,6 +48,7 @@ packages = ["yt_dlp_plugins"]
 
 [tool.uv]
 cache-keys = [
+    { git = { commit = true, tags = true } },
     { file = "pyproject.toml" },
     { file = "hatch_build.py" },
     { file = "tools/font_data.py" },
