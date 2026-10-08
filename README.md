@@ -83,6 +83,7 @@ semicolons:
 | `default` | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Mark the subtitle track of the first comment language as default                       |
 | `nglevel` | `high`, `medium`, `low`, or `none`        | `medium` | Hide comments that many users added to their NG lists. `high` hides the most comments. |
 | `lang`    | `ja`, `en`, or `zh`, separated by commas  | `ja`     | Comment languages. Each language becomes a separate subtitle track.                    |
+| `fonts`   | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Attach the fonts to the video file when `--embed-subs` is used                         |
 
 Example:
 

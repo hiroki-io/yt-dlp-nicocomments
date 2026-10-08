@@ -48,10 +48,10 @@ def parse_choice_option(name: str, value: object, choices: Collection[str]):
     return choices[key] if isinstance(choices, Mapping) else key
 
 
-def parse_default_option(value: str | int) -> bool:
+def parse_boolean_option(name: str, value: str | int) -> bool:
     if isinstance(value, int) and value in (0, 1):
         return bool(value)
-    return parse_choice_option("default", value, BOOLEAN_VALUES)
+    return parse_choice_option(name, value, BOOLEAN_VALUES)
 
 
 def parse_languages_option(value: str | list[str] | tuple[str, ...]) -> list[str]:
@@ -68,14 +68,17 @@ def parse_languages_option(value: str | list[str] | tuple[str, ...]) -> list[str
 
 
 class NicoCommentsPP(PostProcessor):
-    def __init__(self, downloader=None, opacity="1", default="true", nglevel="medium", lang="ja", **kwargs):
+    def __init__(
+        self, downloader=None, opacity="1", default="true", nglevel="medium", lang="ja", fonts="true", **kwargs
+    ):
         if kwargs:
             raise optparse.OptionValueError(f"NicoComments: unknown options: {', '.join(kwargs)}")
         super().__init__(downloader)
         self._opacity = parse_opacity_option(opacity)
-        self._default = parse_default_option(default)
+        self._default = parse_boolean_option("default", default)
         self._ng_score_threshold = parse_choice_option("nglevel", nglevel, NG_SCORE_THRESHOLDS)
         self._languages = parse_languages_option(lang)
+        self._fonts = parse_boolean_option("fonts", fonts)
 
     def run(self, info):
         if info.get("extractor_key") != "Niconico":
@@ -127,7 +130,7 @@ class NicoCommentsPP(PostProcessor):
             info.setdefault(EMBEDDING_KEY, []).append(
                 CommentEmbedding(
                     frozenset(subtitle["name"] for subtitle in comment_subtitles.values()),
-                    frozenset(fonts),
+                    frozenset(fonts) if self._fonts else frozenset(),
                     self._default,
                 )
             )

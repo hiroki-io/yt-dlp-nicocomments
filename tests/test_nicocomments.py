@@ -63,6 +63,7 @@ def used_fonts(monkeypatch):
         ({"opacity": "nan"}, "opacity must be a number from 0 to 1, not nan"),
         ({"opacity": "1.5"}, "opacity must be a number from 0 to 1, not 1.5"),
         ({"default": "maybe"}, "default must be one of true, yes, 1, false, no, 0, not maybe"),
+        ({"fonts": "none"}, "fonts must be one of true, yes, 1, false, no, 0, not none"),
         ({"nglevel": "max"}, "nglevel must be one of high, medium, low, none, not max"),
         ({"lang": "zh-tw"}, "lang must be one of ja, en, zh, not zh-tw"),
         ({"lang": "ja,"}, "lang must be one of ja, en, zh, not "),
@@ -74,17 +75,19 @@ def test_invalid_options_raise_option_value_error(options, message):
         NicoCommentsPP(FakeDownloader(), **options)
 
 
+@pytest.mark.parametrize("option", ["default", "fonts"])
 @pytest.mark.parametrize(
     ("value", "expected"),
     [("true", True), ("Yes", True), ("1", True), ("FALSE", False), ("no", False), ("0", False)],
 )
-def test_default_option_accepts_boolean_words_in_any_case(value, expected):
-    assert NicoCommentsPP(FakeDownloader(), default=value)._default is expected
+def test_boolean_options_accept_boolean_words_in_any_case(option, value, expected):
+    assert getattr(NicoCommentsPP(FakeDownloader(), **{option: value}), f"_{option}") is expected
 
 
+@pytest.mark.parametrize("option", ["default", "fonts"])
 @pytest.mark.parametrize(("value", "expected"), [(True, True), (False, False), (1, True), (0, False)])
-def test_default_option_accepts_booleans_and_integers(value, expected):
-    assert NicoCommentsPP(FakeDownloader(), default=value)._default is expected
+def test_boolean_options_accept_booleans_and_integers(option, value, expected):
+    assert getattr(NicoCommentsPP(FakeDownloader(), **{option: value}), f"_{option}") is expected
 
 
 def test_options_accept_python_values():
@@ -108,6 +111,7 @@ def test_options_accept_python_values():
         ({"lang": [b"ja"]}, "lang must be one of ja, en, zh, not b'ja'"),
         ({"default": None}, "default must be one of true, yes, 1, false, no, 0, not None"),
         ({"default": 2}, "default must be one of true, yes, 1, false, no, 0, not 2"),
+        ({"fonts": None}, "fonts must be one of true, yes, 1, false, no, 0, not None"),
         ({"nglevel": 1}, "nglevel must be one of high, medium, low, none, not 1"),
         ({"nglevel": None}, "nglevel must be one of high, medium, low, none, not None"),
         ({"lang": ["ja", None]}, "lang must be one of ja, en, zh, not None"),
@@ -222,6 +226,16 @@ def test_used_fonts_and_comment_tracks_are_saved_for_the_fonts_postprocessor(fak
     [embedding] = info[EMBEDDING_KEY]
     assert embedding.track_names == {"Japanese comments", "English comments"}
     assert embedding.fonts == {font_files.SANS_BOLD, font_files.MATH}
+    assert embedding.default
+
+
+def test_fonts_are_not_saved_with_the_fonts_option_off(fake_fonts_and_comments, used_fonts):
+    used_fonts.append({font_files.SANS_BOLD})
+    info = video_info()
+    NicoCommentsPP(downloader(), fonts="false").run(info)
+    [embedding] = info[EMBEDDING_KEY]
+    assert embedding.track_names == {"Japanese comments"}
+    assert embedding.fonts == set()
     assert embedding.default
 
 
