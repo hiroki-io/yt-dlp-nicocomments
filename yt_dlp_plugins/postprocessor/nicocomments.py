@@ -109,13 +109,17 @@ class NicoCommentsPP(PostProcessor):
             )
         return [], info
 
-    def _insert_fonts_pp(self) -> bool:
+    def _embed_subtitle_index(self) -> int | None:
         # API users can add the postprocessor without listing it in the postprocessors param,
         # and yt-dlp has no public API for the added postprocessors.
         pps = self._downloader._pps["post_process"]
-        embed_index = max((i for i, pp in enumerate(pps) if isinstance(pp, FFmpegEmbedSubtitlePP)), default=None)
+        return max((i for i, pp in enumerate(pps) if isinstance(pp, FFmpegEmbedSubtitlePP)), default=None)
+
+    def _insert_fonts_pp(self) -> bool:
+        embed_index = self._embed_subtitle_index()
         if embed_index is None:
             return False
+        pps = self._downloader._pps["post_process"]
         if not any(isinstance(pp, NicoCommentFontsPP) for pp in pps):
             # The later postprocessors copy all streams, so FFmpegSplitChapters also copies the fonts
             # to each chapter file. add_post_processor can only append to the end.
@@ -135,7 +139,12 @@ class NicoCommentsPP(PostProcessor):
     def _select_ass_container(self, info):
         # yt-dlp creates the output file name after the video stage, and the merger
         # selects the container from the extension.
-        if self.get_param("skip_download") or not info.get("requested_formats") or info.get("ext") == ASS_CONTAINER:
+        if (
+            self.get_param("skip_download")
+            or not info.get("requested_formats")
+            or info.get("ext") == ASS_CONTAINER
+            or self._embed_subtitle_index() is None
+        ):
             return
         if self.get_param("merge_output_format") is not None:
             self.report_warning(f"Comments can lose their layout because {info['ext']} cannot hold ASS subtitles")

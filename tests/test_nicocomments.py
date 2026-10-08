@@ -124,6 +124,15 @@ def test_skip_download_keeps_the_extension(fake_fonts_and_comments, merge_output
     assert "ja-comments" in info["requested_subtitles"]
 
 
+@pytest.mark.parametrize("merge_output_format", [None, "mp4"])
+def test_extension_is_kept_without_embedding_the_subtitles(fake_fonts_and_comments, merge_output_format):
+    ydl = downloader(embed_subtitles=False, merge_output_format=merge_output_format)
+    _, info = NicoCommentsPP(ydl).run(video_info())
+    assert info["ext"] == "mp4"
+    assert ydl.warnings == []
+    assert not any("Merging" in message for message in ydl.messages)
+
+
 def test_other_extractors_are_skipped():
     info = {"extractor_key": "Youtube"}
     assert NicoCommentsPP(downloader()).run(info) == ([], info)
