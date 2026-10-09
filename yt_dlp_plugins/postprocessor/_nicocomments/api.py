@@ -193,12 +193,12 @@ def fetch_past_threads(
                     loaded += 1
         if not oldest_of_threads:
             break
-        before = datetime.fromtimestamp(when, timezone.utc).isoformat()
-        count = f"{loaded}/{min_comments}" if min_comments else loaded
-        to_screen(f"Loaded past comments before {before} (page {page}, {count} comments)")
         # A page goes further back for a thread with few comments, so the next page starts at the latest of the
         # oldest times of the threads. The API includes the second of "when", so pages can repeat comments.
         next_when = max(oldest_of_threads)
+        reached = datetime.fromtimestamp(next_when, timezone.utc).isoformat()
+        count = f"{loaded}/{min_comments}" if min_comments else loaded
+        to_screen(f"Loaded past comments back to {reached} (page {page}, {count} comments)")
         when = next_when if next_when < when else when - 1
     for thread in merged.values():
         thread["comments"].sort(key=lambda raw: raw.get("no", 0))

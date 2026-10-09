@@ -229,7 +229,7 @@ def test_past_pages_go_back_from_the_oldest_comment_of_each_page():
     assert requested_whens(ydl) == [1000, 780]
     assert [[raw["no"] for raw in thread["comments"]] for thread in threads] == [[1, 2, 3]]
     assert latest[0]["comments"] == [raw_comment("c", 3, "1970-01-01T00:13:20+00:00")]
-    assert messages[-1] == "Loaded past comments before 1970-01-01T00:13:00+00:00 (page 2, 3/3 comments)"
+    assert messages[-1] == "Loaded past comments back to 1970-01-01T00:10:00+00:00 (page 2, 3/3 comments)"
 
 
 def test_past_pages_stop_at_the_page_that_reaches_the_minimum():
@@ -244,7 +244,7 @@ def test_past_pages_stop_at_the_page_that_reaches_the_minimum():
     threads = past_threads(ydl, 1, messages=messages)
     assert requested_whens(ydl) == [1000]
     assert [raw["no"] for raw in threads[0]["comments"]] == [1, 2]
-    assert messages[-1] == "Loaded past comments before 1970-01-01T00:16:40+00:00 (page 1, 2/1 comments)"
+    assert messages[-1] == "Loaded past comments back to 1970-01-01T00:10:00+00:00 (page 1, 2/1 comments)"
 
 
 def test_past_pages_are_not_loaded_when_the_latest_comments_reach_the_minimum():
