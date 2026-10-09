@@ -33,7 +33,7 @@ def cmap_format12(groups: list[tuple[int, int, int]]) -> bytes:
 
 def cmap_format4(segments: list[tuple[int, int, int, list[int] | None]]) -> bytes:
     count = len(segments)
-    glyphs = []
+    glyphs: list[int] = []
     range_offsets = []
     for i, (_, _, _, segment_glyphs) in enumerate(segments):
         if segment_glyphs is None:
@@ -68,7 +68,7 @@ class FakeDownloader:
         self.requests = []
         self.warnings = []
         self.messages = []
-        self._pps = {"post_process": []}
+        self._pps: dict[str, list] = {"post_process": []}
 
     def urlopen(self, request):
         self.requests.append(request)
@@ -121,7 +121,7 @@ def logged_in(ydl):
 
 @pytest.fixture(autouse=True)
 def sleeps(monkeypatch):
-    calls = []
+    calls: list[float] = []
     monkeypatch.setattr(fetch.time, "sleep", calls.append)
     return calls
 

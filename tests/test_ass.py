@@ -76,7 +76,9 @@ def test_fixed_comment_uses_pos():
 def test_moving_comment_x_matches_x_at_shown_ms_and_hidden_ms():
     slot = make_slot()
     (event,), _ = slot_events(slot, STAGE, 1.0, 0, 1.0)
-    x0, y0, x1, y1 = map(float, re.search(r"\\move\(([^,]+),([^,]+),([^,]+),([^)]+)\)", event).groups())
+    match = re.search(r"\\move\(([^,]+),([^,]+),([^,]+),([^)]+)\)", event)
+    assert match
+    x0, y0, x1, y1 = map(float, match.groups())
     assert x0 == pytest.approx(slot.x_at(slot.shown_ms) + slot.text_offset_x, abs=0.01)
     assert x1 == pytest.approx(slot.x_at(slot.hidden_ms) + slot.text_offset_x, abs=0.01)
     assert x0 > slot.initial_x + slot.text_offset_x

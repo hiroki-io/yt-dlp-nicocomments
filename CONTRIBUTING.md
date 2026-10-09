@@ -6,6 +6,7 @@
 uv run pytest
 uv run ruff check
 uv run ruff format --check
+uv run pyright
 cd tools/drift
 npm ci
 npm run lint

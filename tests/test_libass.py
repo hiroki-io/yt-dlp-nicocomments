@@ -55,7 +55,7 @@ def render(chain: fonts.FontChain, font_directory, tmp_path, text: str = TEXT) -
     log = subprocess.run(
         command, cwd=tmp_path, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True
     ).stderr
-    selected = {}
+    selected: dict[str, str] = {}
     for line in log.splitlines():
         if match := FONT_SELECTION.search(line):
             selected.setdefault(match[1], match[2])
@@ -68,15 +68,15 @@ def render(chain: fonts.FontChain, font_directory, tmp_path, text: str = TEXT) -
 def render_with_pillow(chain: fonts.FontChain, font_directory) -> Image.Image:
     image = Image.new("L", (WIDTH, HEIGHT))
     draw = ImageDraw.Draw(image)
-    pen = X
+    pen: float = X
     for face, part in chain.runs(TEXT):
         draw.text((pen, BASELINE), part, font=pillow_font(font_directory, face, EM), fill=255, anchor="ls")
         pen += sum(face.advance(char) for char in part) * EM / face.units_per_em
     return image
 
 
-def ink_bounds(image: Image.Image) -> tuple[int, int, int, int]:
-    return image.convert("L").point(lambda value: 255 if value > 128 else 0).getbbox()
+def ink_bounds(image: Image.Image) -> tuple[int, int, int, int] | None:
+    return image.convert("L").point([255 if value > 128 else 0 for value in range(256)]).getbbox()
 
 
 @pytest.mark.parametrize("key", FONT_KEYS)
@@ -92,9 +92,11 @@ def test_libass_selects_the_fonts_in_the_ass_subtitle(chains, font_directory, ke
 def test_libass_text_position_matches_pillow(chains, font_directory, key, tmp_path):
     chain = chains[key]
     drawn, _ = render(chain, font_directory, tmp_path)
+    drawn_bounds = ink_bounds(drawn)
     expected = ink_bounds(render_with_pillow(chain, font_directory))
-    for actual, wanted in zip(ink_bounds(drawn), expected, strict=True):
-        assert actual == pytest.approx(wanted, abs=3), (ink_bounds(drawn), expected)
+    assert drawn_bounds is not None and expected is not None
+    for actual, wanted in zip(drawn_bounds, expected, strict=True):
+        assert actual == pytest.approx(wanted, abs=3), (drawn_bounds, expected)
 
 
 @pytest.mark.parametrize("key", FONT_KEYS)
@@ -112,7 +114,7 @@ def test_libass_draws_the_same_image_with_the_subset_fonts(chains, font_director
     chain = chains[key]
     subset_directory = tmp_path / "fonts"
     subset_directory.mkdir()
-    chars = {}
+    chars: dict[font_files.FontFile, set[str]] = {}
     for face, part in chain.runs(text):
         font_files.add_font_chars(chars, {face.font: drawn_chars(part)})
     for font, font_chars in chars.items():

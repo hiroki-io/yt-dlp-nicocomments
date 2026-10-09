@@ -48,8 +48,9 @@ def test_default_applies_until_the_end_unless_an_at_command_is_given():
 
 def test_later_default_takes_priority():
     scripts = Nicoscripts.parse([raw("@デフォルト", ["red"], vpos_ms=0), raw("@デフォルト", ["blue"], vpos_ms=5000)])
-    _, commands = apply(scripts, raw())
-    assert commands[0] == "blue"
+    result = apply(scripts, raw())
+    assert result is not None
+    assert result[1][0] == "blue"
 
 
 def test_default_ignores_premium_colors_of_non_premium_users():

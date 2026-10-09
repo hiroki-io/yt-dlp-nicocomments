@@ -7,6 +7,7 @@ import math
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import unicodedata
 from collections.abc import Callable, Iterable
@@ -28,7 +29,10 @@ from .font_files import (
 )
 
 if TYPE_CHECKING:
-    from importlib.resources.abc import Traversable
+    if sys.version_info >= (3, 11):
+        from importlib.resources.abc import Traversable
+    else:
+        from importlib.abc import Traversable
 
 # Chromium on Linux synthesizes bold for the fallback faces of the CSS weight 600 that defont uses.
 SYNTHETIC_BOLD_KEYS = {"defont"}
@@ -67,7 +71,7 @@ def extends_cluster(text: str) -> list[bool]:
 
 
 def parse_cmap(data: bytes) -> dict[int, int]:
-    subtables = {}
+    subtables: dict[tuple[int, int, int], int] = {}
     for i in range(struct.unpack_from(">H", data, 2)[0]):
         platform, encoding, offset = struct.unpack_from(">HHI", data, 4 + 8 * i)
         subtables.setdefault((platform, encoding, struct.unpack_from(">H", data, offset)[0]), offset)
@@ -189,7 +193,7 @@ class FontChain:
 
 
 def font_data_directory() -> "Traversable":
-    return importlib.resources.files(__package__) / FONT_DATA_DIRECTORY
+    return importlib.resources.files(__name__.rpartition(".")[0]) / FONT_DATA_DIRECTORY
 
 
 def read_bundled_fonts(fonts: Iterable[FontFile], package_directory: "Traversable") -> dict[FontFile, bytes]:
@@ -256,7 +260,7 @@ def subset_font_with_command(command: str, data: bytes, chars: Iterable[str]) ->
             source, unicodes, output = (Path(directory, name) for name in ("source", "unicodes.txt", "output"))
             source.write_bytes(data)
             unicodes.write_text("\n".join(f"{ord(char):X}" for char in chars), encoding="ascii")
-            _, stderr, returncode = Popen.run(
+            _, stderr, returncode = Popen.run(  # pyright: ignore[reportAssignmentType]
                 [command, source, f"--unicodes-file={unicodes}", f"--output-file={output}", *SUBSET_OPTIONS],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,

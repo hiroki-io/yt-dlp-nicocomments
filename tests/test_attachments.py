@@ -80,8 +80,8 @@ def embed_subtitles(ydl, info):
 def run_fonts_pp(ydl, info, fake_fonts, default=True):
     info[EMBEDDING_KEY] = [CommentEmbedding(frozenset({"Japanese comments"}), fake_fonts, default)]
     pp = NicoCommentFontsPP(ydl)
-    warnings = []
-    pp.report_warning = warnings.append
+    warnings: list[str] = []
+    pp.report_warning = lambda text, *args, **kwargs: warnings.append(text)
     pp.run(info)
     return warnings
 
@@ -158,8 +158,8 @@ def test_raw_json_is_embedded_without_a_warning_and_kept(ydl, tmp_path):
     }
     _, info = NicoCommentJSONPP(ydl).run(info)
     embed_pp = FFmpegEmbedSubtitlePP(ydl)
-    warnings = []
-    embed_pp.report_warning = warnings.append
+    warnings: list[str] = []
+    embed_pp.report_warning = lambda text, *args, **kwargs: warnings.append(text)
     files_to_delete, _ = embed_pp.run(info)
     assert warnings == []
     assert files_to_delete == [str(ass_path)]

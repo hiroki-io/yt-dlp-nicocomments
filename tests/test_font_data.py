@@ -16,6 +16,7 @@ def font_data():
     spec = importlib.util.spec_from_file_location(
         "font_data", Path(__file__).resolve().parent.parent / "tools" / "font_data.py"
     )
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

@@ -14,6 +14,7 @@ LICENSE_DIRECTORY = ROOT / "LICENSES"
 def load_font_files():
     # The build environment does not have yt-dlp, which the package imports.
     spec = importlib.util.spec_from_file_location("font_files", PACKAGE_DIRECTORY / "font_files.py")
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -25,7 +26,7 @@ def download(url: str) -> bytes:
         return response.read()
 
 
-def checksum(data: bytes) -> int:
+def checksum(data: bytes | bytearray) -> int:
     data = data + b"\0" * (-len(data) % 4)
     return sum(struct.unpack(f">{len(data) // 4}I", data)) & 0xFFFFFFFF
 

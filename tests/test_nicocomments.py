@@ -58,7 +58,7 @@ def fake_fonts_and_comments(monkeypatch):
 
 @pytest.fixture
 def used_fonts(monkeypatch):
-    fonts_of_videos = []
+    fonts_of_videos: list[dict[font_files.FontFile, set[str]]] = []
 
     def build_ass(*args):
         return "[Script Info]\n", fonts_of_videos.pop(0) if fonts_of_videos else {}

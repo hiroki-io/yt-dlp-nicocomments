@@ -175,7 +175,7 @@ def test_past_pages_go_back_from_the_oldest_comment_of_each_page():
         ]
     )
     latest = [{"id": "2", "fork": "main", "comments": [raw_comment("c", 3, "1970-01-01T00:13:20+00:00")]}]
-    messages = []
+    messages: list[str] = []
     threads = past_threads(ydl, 3, latest, messages=messages)
     assert requested_whens(ydl) == [1000, 780]
     assert [[raw["no"] for raw in thread["comments"]] for thread in threads] == [[1, 2, 3]]
@@ -191,7 +191,7 @@ def test_past_pages_stop_at_the_page_that_reaches_the_minimum():
             )
         ]
     )
-    messages = []
+    messages: list[str] = []
     threads = past_threads(ydl, 1, messages=messages)
     assert requested_whens(ydl) == [1000]
     assert [raw["no"] for raw in threads[0]["comments"]] == [1, 2]
@@ -249,7 +249,7 @@ def test_past_pages_are_not_loaded_when_the_latest_comments_have_all_comments():
     latest = [
         {"id": "2", "fork": "main", "commentCount": 1, "comments": [raw_comment("a", 1, "1970-01-01T00:10:00+00:00")]}
     ]
-    messages = []
+    messages: list[str] = []
     assert past_threads(ydl, None, latest, messages=messages) == latest
     assert ydl.requests == []
     assert messages == ["Loaded all comments"]
@@ -331,7 +331,7 @@ def test_past_pages_without_a_login_are_stopped_with_a_warning():
     rejected = http_error(400, {"meta": {"status": 400, "errorCode": "INVALID_TOKEN"}})
     ydl = FakeDownloader([rejected, watch_api(), rejected])
     latest = [{"id": "2", "fork": "main", "comments": [raw_comment("a", 1, "1970-01-01T00:10:00+00:00")]}]
-    warnings = []
+    warnings: list[str] = []
     threads = past_threads(ydl, None, latest, warnings=warnings)
     assert warnings == [
         "Stopped loading past comments: the comment API needs a login for past comments. "
@@ -342,7 +342,7 @@ def test_past_pages_without_a_login_are_stopped_with_a_warning():
 
 def test_loaded_comments_are_kept_after_an_error_in_the_past_pages():
     ydl = FakeDownloader([threads_response(raw_comment("a", 1, "1970-01-01T00:10:00+00:00")), http_error(503)])
-    warnings = []
+    warnings: list[str] = []
     threads = past_threads(ydl, None, warnings=warnings)
     assert warnings == ["Stopped loading past comments: HTTP Error 503: Service Unavailable"]
     assert [raw["no"] for raw in threads[0]["comments"]] == [1]
@@ -356,7 +356,7 @@ def test_comments_of_an_unexpected_past_page_are_not_added():
             threads_response(raw_comment("a", 1, "1970-01-01T00:10:00+00:00"), broken),
         ]
     )
-    warnings = []
+    warnings: list[str] = []
     threads = past_threads(ydl, None, warnings=warnings)
     assert warnings == ["Stopped loading past comments: unexpected response from the comment API: KeyError('postedAt')"]
     assert [raw["no"] for raw in threads[0]["comments"]] == [2]
@@ -365,7 +365,7 @@ def test_comments_of_an_unexpected_past_page_are_not_added():
 def test_unexpected_watch_data_in_the_past_pages_keeps_the_loaded_comments():
     ydl = logged_in(FakeDownloader([http_error(400), {"meta": {"status": 200}, "data": {}}]))
     latest = [{"id": "2", "fork": "main", "comments": [raw_comment("a", 1, "1970-01-01T00:10:00+00:00")]}]
-    warnings = []
+    warnings: list[str] = []
     assert past_threads(ydl, None, latest, warnings=warnings) == latest
     assert warnings == ["Stopped loading past comments: unexpected response from the comment API: KeyError('comment')"]
 
@@ -379,7 +379,7 @@ def test_past_pages_are_added_to_the_layers_and_the_raw_comments():
 
 
 def test_raw_json_drops_the_values_of_the_viewer():
-    comment = {
+    comment: dict = {
         "keys": {"userKey": "secret"},
         "nvComment": {"server": "s", "params": {}, "threadKey": "secret"},
         "ng": {"owner": [], "viewer": {"count": 1, "items": [{"type": "word", "source": "a"}]}},

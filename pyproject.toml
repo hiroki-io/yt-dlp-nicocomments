@@ -33,7 +33,7 @@ Issues = "https://github.com/hiroki-io/yt-dlp-nicocomments/issues"
 Releases = "https://github.com/hiroki-io/yt-dlp-nicocomments/releases"
 
 [dependency-groups]
-dev = ["pillow", "pytest", "ruff", "yt-dlp"]
+dev = ["pillow", "pyright", "pytest", "ruff", "yt-dlp"]
 
 [tool.hatch.version]
 source = "vcs"
@@ -63,3 +63,9 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.pyright]
+include = ["yt_dlp_plugins", "tests", "tools", "hatch_build.py"]
+extraPaths = ["tests"]
+pythonVersion = "3.10"
+reportUnnecessaryTypeIgnoreComment = "error"

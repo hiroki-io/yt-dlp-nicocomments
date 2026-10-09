@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -13,7 +14,10 @@ from .font_files import FontFile, add_font_chars
 from .fonts import FontError, bundled_font_path, font_data_directory, font_subsetter
 
 if TYPE_CHECKING:
-    from importlib.resources.abc import Traversable
+    if sys.version_info >= (3, 11):
+        from importlib.resources.abc import Traversable
+    else:
+        from importlib.abc import Traversable
 
 EMBEDDING_KEY = "__nicocomments_embedding"
 JSON_SUBTITLES_KEY = "__nicocomments_json_subtitles"
@@ -28,7 +32,7 @@ class CommentEmbedding:
 
 
 class NicoCommentJSONPP(PostProcessor):
-    def run(self, info):
+    def run(self, info):  # pyright: ignore[reportIncompatibleMethodOverride]
         # FFmpegEmbedSubtitlePP warns about each JSON subtitle. yt-dlp moves the written files
         # from the list in __files_to_move, so the JSON files are still moved.
         keys = info.pop(JSON_SUBTITLES_KEY, [])
@@ -38,7 +42,7 @@ class NicoCommentJSONPP(PostProcessor):
 
 
 class NicoCommentFontsPP(FFmpegPostProcessor):
-    def run(self, info):
+    def run(self, info):  # pyright: ignore[reportIncompatibleMethodOverride]
         embeddings: list[CommentEmbedding] = info.pop(EMBEDDING_KEY, [])
         path = info.get("filepath")
         if not path or not os.path.exists(path):

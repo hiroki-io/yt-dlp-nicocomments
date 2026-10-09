@@ -49,7 +49,7 @@ def split_first(text: str, quoted: bool) -> tuple[str, str]:
             end = text.find(quote, 1)
             if end >= 0:
 
-                def unescape(m: re.Match) -> str:
+                def unescape(m: re.Match[str]) -> str:
                     nonlocal end
                     if m.start() > end:
                         return m[0]

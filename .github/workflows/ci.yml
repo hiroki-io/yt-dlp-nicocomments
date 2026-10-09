@@ -28,6 +28,10 @@ jobs:
         working-directory: tools/drift
       - run: npm run lint
         working-directory: tools/drift
+      # pyright needs fontTools, but installing the project runs the build hook that downloads the fonts.
+      - run: uv sync --locked --no-install-project
+      # pyright uses the Node.js from setup-node instead of downloading one.
+      - run: uv run --no-sync pyright
 
   build:
     name: Build with the pinned build dependencies

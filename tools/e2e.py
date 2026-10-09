@@ -2,6 +2,8 @@ import importlib
 import os
 import subprocess
 import sys
+from collections.abc import Mapping
+from typing import Any
 
 import yt_dlp
 from yt_dlp.downloader.common import FileDownloader
@@ -10,7 +12,7 @@ DURATION = "5"
 
 
 class PlaceholderFD(FileDownloader):
-    def real_download(self, filename, info_dict):
+    def real_download(self, filename, info_dict: Mapping[str, Any]):
         if info_dict.get("vcodec") != "none":
             size = f"{info_dict['width']}x{info_dict['height']}"
             source = ["-f", "lavfi", "-i", f"testsrc2=size={size}:rate=30", "-c:v", "libx264", "-pix_fmt", "yuv420p"]
@@ -19,9 +21,10 @@ class PlaceholderFD(FileDownloader):
         tmpfilename = self.temp_name(filename)
         subprocess.run(["ffmpeg", "-v", "error", "-y", *source, "-t", DURATION, "-f", "mp4", tmpfilename], check=True)
         self.try_rename(tmpfilename, filename)
-        size = os.path.getsize(filename)
-        self._hook_progress(
-            {"filename": filename, "status": "finished", "downloaded_bytes": size, "total_bytes": size}, info_dict
+        file_size = os.path.getsize(filename)
+        self._hook_progress(  # pyright: ignore[reportAttributeAccessIssue]
+            {"filename": filename, "status": "finished", "downloaded_bytes": file_size, "total_bytes": file_size},
+            info_dict,
         )
         return True
 

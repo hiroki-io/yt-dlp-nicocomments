@@ -48,6 +48,8 @@ class Timing(NamedTuple):
 
 def chat_timing(chat: Chat, content_length_ms: float | None) -> Timing:
     view = chat.view_time_ms
+    start: float
+    end: float
     if chat.is_fixed:
         start, end = chat.vpos_ms, chat.vpos_ms + view
         if content_length_ms is not None and content_length_ms - chat.vpos_ms < view:
