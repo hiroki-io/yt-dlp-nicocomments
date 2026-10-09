@@ -378,10 +378,11 @@ def test_expired_thread_key_is_renewed_from_the_watch_api():
 
 def test_past_pages_without_a_login_are_stopped_with_a_warning():
     rejected = http_error(400, {"meta": {"status": 400, "errorCode": "INVALID_TOKEN"}})
-    ydl = FakeDownloader([rejected, watch_api(), rejected])
+    ydl = FakeDownloader([rejected])
     latest = [{"id": "2", "fork": "main", "comments": [raw_comment("a", 1, "1970-01-01T00:10:00+00:00")]}]
     warnings: list[str] = []
     threads = past_threads(ydl, None, latest, warnings=warnings)
+    assert len(ydl.requests) == 1
     assert warnings == [
         "Stopped loading past comments: the comment API needs a login for past comments. "
         "Use --cookies-from-browser or --cookies"

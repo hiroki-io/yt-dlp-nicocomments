@@ -245,20 +245,24 @@ def fetch_past_page(ydl, video_id: str, language: str, comment: dict, when: int)
     try:
         return fetch_threads(ydl, comment, {"when": when}), comment
     except HTTPError as e:
-        if e.status != 400:
-            raise
+        check_past_page_error(e)
     # The thread key expires in about 10 minutes.
     comment = fetch_comment_data(ydl, video_id, language)
     try:
         return fetch_threads(ydl, comment, {"when": when}), comment
     except HTTPError as e:
-        if e.status != 400:
-            raise
-        if api_error_code(e) == "INVALID_TOKEN":
-            raise PastCommentsError(
-                "the comment API needs a login for past comments. Use --cookies-from-browser or --cookies"
-            ) from e
+        check_past_page_error(e)
         raise
+
+
+def check_past_page_error(error: HTTPError) -> None:
+    if error.status != 400:
+        raise error
+    # A renewed thread key cannot fix INVALID_TOKEN, which a guest thread key gets.
+    if api_error_code(error) == "INVALID_TOKEN":
+        raise PastCommentsError(
+            "the comment API needs a login for past comments. Use --cookies-from-browser or --cookies"
+        ) from error
 
 
 def api_error_code(error: HTTPError) -> str | None:
