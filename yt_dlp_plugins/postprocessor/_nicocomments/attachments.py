@@ -85,7 +85,7 @@ class NicoCommentFontsPP(FFmpegPostProcessor):
 
         temporary_path = prepend_extension(path, "temp")
         if attaching:
-            self.to_screen(f'Attaching the Noto fonts to "{path}"')
+            self.to_screen(f'Attaching fonts to "{path}"')
         try:
             with tempfile.TemporaryDirectory(prefix="yt-dlp-nicocomments-", ignore_cleanup_errors=True) as directory:
                 if attaching:
