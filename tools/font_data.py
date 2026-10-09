@@ -41,7 +41,7 @@ def remove_bmp_cmap(data: bytes) -> bytes:
         records[tag] = (12 + 16 * i, offset, length)
     record, offset, length = records[b"cmap"]
     count = struct.unpack_from(">H", font, offset + 2)[0]
-    encodings = [font[offset + 4 + 8 * i : offset + 12 + 8 * i] for i in range(count)]
+    encodings = [data[offset + 4 + 8 * i : offset + 12 + 8 * i] for i in range(count)]
     kept = [encoding for encoding in encodings if encoding[:4] != b"\0\3\0\1"]
     if len(kept) == count or not any(encoding[:4] == b"\0\3\0\x0a" for encoding in kept):
         return data

@@ -69,3 +69,4 @@ include = ["yt_dlp_plugins", "tests", "tools", "hatch_build.py"]
 extraPaths = ["tests"]
 pythonVersion = "3.10"
 reportUnnecessaryTypeIgnoreComment = "error"
+reportUnnecessaryComparison = "error"
