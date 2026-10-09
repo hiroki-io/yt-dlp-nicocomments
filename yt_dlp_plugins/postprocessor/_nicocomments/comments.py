@@ -1,12 +1,18 @@
 import re
 from dataclasses import dataclass, field
+from typing import Literal, get_args
+
+from .font_files import FontKey
 
 VIEW_TIME_MS = 3000
 MAX_BODY_LENGTH = 10000
 MAX_AT_SECONDS = 10**9
-POSITIONS = ("ue", "naka", "shita")
-SIZES = ("big", "medium", "small")
-FONT_KEYS = ("defont", "gothic", "mincho")
+Position = Literal["ue", "naka", "shita"]
+Size = Literal["big", "medium", "small"]
+CommandKind = Literal["position", "size", "color", "font"]
+POSITIONS: tuple[Position, ...] = get_args(Position)
+SIZES: tuple[Size, ...] = get_args(Size)
+FONT_KEYS: tuple[FontKey, ...] = get_args(FontKey)
 BASIC_COLORS = {
     "white": "FFFFFF",
     "red": "FF0000",
@@ -54,7 +60,7 @@ def is_premium_color(command: str) -> bool:
     return command.lower() in PREMIUM_COLORS or bool(COLOR_CODE_COMMAND.fullmatch(command))
 
 
-def command_kind(command: str, premium: bool) -> str | None:
+def command_kind(command: str, premium: bool) -> CommandKind | None:
     lower = command.lower()
     if lower in POSITIONS:
         return "position"
@@ -96,10 +102,10 @@ class Chat:
     ender: bool
     invisible: bool
     live: bool
-    position: str
-    size: str
+    position: Position
+    size: Size
     color: str
-    font_key: str
+    font_key: FontKey
     at_seconds: float | None
 
     @classmethod
@@ -108,15 +114,14 @@ class Chat:
         is_owner = fork == OWNER_FORK
         for command in commands:
             lower = command.lower()
-            kind = command_kind(command, premium=True)
-            if kind == "position":
+            if lower in POSITIONS:
                 position = position or lower
-            elif kind == "font":
-                font_key = font_key or lower
-            elif kind == "size":
+            elif lower in SIZES:
                 size = size or lower
-            elif kind == "color":
+            elif lower in BASIC_COLORS or is_premium_color(command):
                 color = color or color_value(command)
+            elif lower in FONT_KEYS:
+                font_key = font_key or lower
             elif is_owner and at is None and (m := DURATION_COMMAND.fullmatch(command)):
                 seconds = float(m[1])
                 if seconds > 0:

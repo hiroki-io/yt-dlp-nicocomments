@@ -2,13 +2,14 @@ import random
 
 from .comments import VideoComments
 from .filters import visible_chats
+from .font_files import FontKey
 from .fonts import FontChain
 from .layout import SlotLayer, Stage, reverse_toggle_frames
 
 
 def layout_comments(
     comments: VideoComments,
-    font_chains: dict[str, FontChain],
+    font_chains: dict[FontKey, FontChain],
     content_length_ms: float | None,
     ng_score_threshold: int | None,
     seed: str,

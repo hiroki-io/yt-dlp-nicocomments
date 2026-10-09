@@ -2,6 +2,7 @@ import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Literal
 
 from .comments import (
     BASIC_COLORS,
@@ -11,18 +12,20 @@ from .comments import (
     PREMIUM_COLORS,
     SCRIPT_PREFIXES,
     SIZES,
+    CommandKind,
     command_kind,
 )
 
 DEFAULT_DURATION_MS = 30000
-SCRIPT_TYPES = {"デフォルト": "default", "置換": "replace", "逆": "reverse"}
+ScriptType = Literal["default", "replace", "reverse"]
+SCRIPT_TYPES: dict[str, ScriptType] = {"デフォルト": "default", "置換": "replace", "逆": "reverse"}
 TARGETS = {"全": frozenset({False, True}), "コメ": frozenset({False}), "投コメ": frozenset({True})}
 ESCAPES = {"n": "\n", "r": "\r", "t": "\t"}
 FIRST_TOKEN = re.compile(r"(\S*)\s+(.*)", re.DOTALL)
 DURATION_TOKEN = re.compile(r"(?:^|\s)@([0-9]+(?:\.[0-9]+)?)(?:\s|$)")
 ESCAPE = re.compile(r"\\([^\n\r\u2028\u2029])")
 # The official player joins the names without a group, so "^" and "$" bind only to the first and last names.
-COMMAND_KIND_PATTERNS = {
+COMMAND_KIND_PATTERNS: dict[CommandKind, str] = {
     "position": "|".join(POSITIONS),
     "size": "|".join(SIZES),
     "color": "|".join([*BASIC_COLORS, *PREMIUM_COLORS, "^#[0-9a-fA-F]{6}$"]),
@@ -30,8 +33,8 @@ COMMAND_KIND_PATTERNS = {
 }
 
 
-def style_commands(raw: dict) -> dict[str, str]:
-    commands: dict[str, str] = {}
+def style_commands(raw: dict) -> dict[CommandKind, str]:
+    commands: dict[CommandKind, str] = {}
     for command in raw.get("commands") or []:
         kind = command_kind(command, bool(raw.get("isPremium")))
         if kind is not None and kind not in commands:
@@ -96,7 +99,7 @@ def posted_at_ms(raw: dict) -> float:
 class Default:
     start_ms: float
     end_ms: float
-    commands: dict[str, str]
+    commands: dict[CommandKind, str]
     posted_at_ms: float
 
 
@@ -109,7 +112,7 @@ class Replacement:
     exact: bool
     start_ms: float
     end_ms: float
-    commands: dict[str, str]
+    commands: dict[CommandKind, str]
     posted_at_ms: float
 
     def replaced_commands_pattern(self) -> re.Pattern | None:

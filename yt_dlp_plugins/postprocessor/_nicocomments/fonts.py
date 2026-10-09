@@ -26,6 +26,7 @@ from .font_files import (
     FONT_FILES,
     METRICS_STRING_BOUNDS,
     FontFile,
+    FontKey,
 )
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
         from importlib.abc import Traversable
 
 # Chromium on Linux synthesizes bold for the fallback faces of the CSS weight 600 that defont uses.
-SYNTHETIC_BOLD_KEYS = {"defont"}
+SYNTHETIC_BOLD_KEYS: set[FontKey] = {"defont"}
 
 ZERO_WIDTH_CATEGORIES = ("Mn", "Me", "Cf")
 ZERO_WIDTH_JOINER = "\u200d"
@@ -276,7 +277,7 @@ def subset_font_with_command(command: str, data: bytes, chars: Iterable[str]) ->
 
 
 @cache
-def load_font_chains() -> dict[str, FontChain]:
+def load_font_chains() -> dict[FontKey, FontChain]:
     faces = {}
     for font, data in read_bundled_fonts(FONT_FILES, font_data_directory()).items():
         try:

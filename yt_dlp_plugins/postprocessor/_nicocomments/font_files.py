@@ -1,7 +1,9 @@
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
+FontKey = Literal["defont", "gothic", "mincho"]
 FONT_DATA_DIRECTORY = "font_data"
 # The Matroska muxer needs a MIME type for each attachment. FFmpeg uses these types for TrueType and CFF fonts.
 MIMETYPES = {".ttf": "application/x-truetype-font", ".otf": "application/vnd.ms-opentype"}
@@ -87,7 +89,7 @@ THAI = FontFile(
     "https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/notosansthai/NotoSansThai%5Bwdth%2Cwght%5D.ttf",
     "5a1c559bb539583c8a1fd99d1c5b9491e5e14478c9cd2bd0970d5c3096cc9ef8",
 )
-CHAIN_FONTS = {"defont": SANS_BOLD, "gothic": SANS_REGULAR, "mincho": SERIF_REGULAR}
+CHAIN_FONTS: dict[FontKey, FontFile] = {"defont": SANS_BOLD, "gothic": SANS_REGULAR, "mincho": SERIF_REGULAR}
 # Ink bounds of "|ÉqÅM" above and below the baseline, in font units.
 METRICS_STRING_BOUNDS = {SANS_BOLD: (1010, 284), SANS_REGULAR: (983, 279), SERIF_REGULAR: (973, 272)}
 FALLBACK_FONTS = (EMOJI, MATH, SYMBOLS, SANS_SC_REGULAR, SANS_KR_REGULAR, THAI)

@@ -4,7 +4,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from .comments import Chat
+from .comments import Chat, Size
+from .font_files import FontKey
 from .fonts import FontChain
 
 # Values below are taken from the comment renderer of the official web player.
@@ -16,10 +17,10 @@ FRONT_ADJUST_MS = 1000
 BEHIND_ADJUST_MS = 1000
 FIXED_OVERLAP_TOLERANCE_MS = 200
 SLOT_COUNT = 40
-LINE_COUNT_FOR_CHARACTER_SIZE = {"big": 7.8, "medium": 11.3, "small": 16.6}
-LINE_COUNT_FOR_LINE_HEIGHT = {"big": 8.4, "medium": 13.1, "small": 21}
-LINE_COUNT_FOR_LINE_HEIGHT_AT_RESIZE = {"big": 16, "medium": 25.4, "small": 38}
-RESIZE_LINE_COUNT = {"big": 3, "medium": 5, "small": 7}
+LINE_COUNT_FOR_CHARACTER_SIZE: dict[Size, float] = {"big": 7.8, "medium": 11.3, "small": 16.6}
+LINE_COUNT_FOR_LINE_HEIGHT: dict[Size, float] = {"big": 8.4, "medium": 13.1, "small": 21}
+LINE_COUNT_FOR_LINE_HEIGHT_AT_RESIZE: dict[Size, float] = {"big": 16, "medium": 25.4, "small": 38}
+RESIZE_LINE_COUNT: dict[Size, int] = {"big": 3, "medium": 5, "small": 7}
 OVERLAP_EPSILON = 1e-4
 STROKE_WIDTH = 2.8
 FONT_SIZE_RATIO = 0.8
@@ -144,15 +145,15 @@ class SlotLayer:
     slots: list[Slot]
 
 
-def default_character_size(size: str) -> float:
+def default_character_size(size: Size) -> float:
     return STAGE_HEIGHT / LINE_COUNT_FOR_CHARACTER_SIZE[size]
 
 
-def default_line_height(size: str) -> float:
+def default_line_height(size: Size) -> float:
     return (STAGE_HEIGHT - default_character_size(size)) / (LINE_COUNT_FOR_LINE_HEIGHT[size] - 1)
 
 
-def resized_line_height(size: str) -> float:
+def resized_line_height(size: Size) -> float:
     resized = LINE_COUNT_FOR_LINE_HEIGHT_AT_RESIZE[size]
     return (STAGE_HEIGHT - LINE_COUNT_FOR_LINE_HEIGHT[size] / resized * default_character_size(size)) / (resized - 1)
 
@@ -161,7 +162,7 @@ class Stage:
     def __init__(
         self,
         content_length_ms: float | None,
-        font_chains: dict[str, FontChain],
+        font_chains: dict[FontKey, FontChain],
         rng: random.Random,
     ):
         self.content_length_ms = content_length_ms
