@@ -1,15 +1,25 @@
+import json
 import optparse
+from datetime import datetime, timezone
 
 import pytest
-from conftest import FakeDownloader
+from conftest import FakeDownloader, logged_in
 from yt_dlp.networking.exceptions import TransportError
 from yt_dlp.postprocessor.ffmpeg import FFmpegEmbedSubtitlePP, FFmpegSplitChaptersPP
 
 from yt_dlp_plugins.postprocessor import nicocomments
 from yt_dlp_plugins.postprocessor._nicocomments import font_files, fonts
-from yt_dlp_plugins.postprocessor._nicocomments.attachments import EMBEDDING_KEY, NicoCommentFontsPP
+from yt_dlp_plugins.postprocessor._nicocomments.api import RawComments
+from yt_dlp_plugins.postprocessor._nicocomments.attachments import (
+    EMBEDDING_KEY,
+    JSON_SUBTITLES_KEY,
+    NicoCommentFontsPP,
+    NicoCommentJSONPP,
+)
 from yt_dlp_plugins.postprocessor._nicocomments.comments import CommentLayer, VideoComments
 from yt_dlp_plugins.postprocessor.nicocomments import NicoCommentsPP
+
+NOW = datetime(2026, 10, 9, tzinfo=timezone.utc)
 
 
 def video_info(**fields):
@@ -36,9 +46,10 @@ def downloader(embed_subtitles=True, **params):
 def fake_fonts_and_comments(monkeypatch):
     languages = []
 
-    def fetch_comments(ydl, video_id, language):
+    def fetch_comments(ydl, video_id, language, min_comments, to_screen, report_warning):
         languages.append(language)
-        return VideoComments([CommentLayer(0, False, [])], False)
+        raw = RawComments({"nvComment": {"threadKey": "key"}}, [{"id": "1", "fork": "main", "comments": []}], NOW)
+        return VideoComments([CommentLayer(0, False, [])], False), raw
 
     monkeypatch.setattr(nicocomments, "load_font_chains", dict)
     monkeypatch.setattr(nicocomments, "fetch_comments", fetch_comments)
@@ -67,6 +78,9 @@ def used_fonts(monkeypatch):
         ({"nglevel": "max"}, "nglevel must be one of high, medium, low, none, not max"),
         ({"lang": "zh-tw"}, "lang must be one of ja, en, zh, not zh-tw"),
         ({"lang": "ja,"}, "lang must be one of ja, en, zh, not "),
+        ({"comments": "-1"}, "comments must be a non-negative integer or all, not -1"),
+        ({"comments": "many"}, "comments must be a non-negative integer or all, not many"),
+        ({"writejson": "maybe"}, "writejson must be one of true, yes, 1, false, no, 0, not maybe"),
         ({"opacty": "0.8", "fontsize": "2"}, "unknown options: opacty, fontsize"),
     ],
 )
@@ -119,11 +133,90 @@ def test_options_accept_python_values():
         ({"lang": []}, r"lang must be one of ja, en, zh, not \[\]"),
         ({"lang": 5}, "lang must be one of ja, en, zh, not 5"),
         ({"lang": b"ja"}, "lang must be one of ja, en, zh, not b'ja'"),
+        ({"comments": -1}, "comments must be a non-negative integer or all, not -1"),
+        ({"comments": True}, "comments must be a non-negative integer or all, not True"),
+        ({"comments": 1.5}, "comments must be a non-negative integer or all, not 1.5"),
+        ({"comments": None}, "comments must be a non-negative integer or all, not None"),
     ],
 )
 def test_invalid_python_values_raise_option_value_error(options, message):
     with pytest.raises(optparse.OptionValueError, match=f"^NicoComments: {message}$"):
         NicoCommentsPP(FakeDownloader(), **options)
+
+
+@pytest.mark.parametrize(("value", "expected"), [("0", 0), (" 12 ", 12), (3, 3), ("ALL", None)])
+def test_comments_accepts_comment_counts_and_all(value, expected):
+    assert NicoCommentsPP(FakeDownloader(), comments=value)._min_comments == expected
+
+
+@pytest.fixture
+def min_comments_values(fake_fonts_and_comments, monkeypatch):
+    values = []
+    fetch_comments = nicocomments.fetch_comments
+
+    def record_min_comments(ydl, video_id, language, min_comments, to_screen, report_warning):
+        values.append(min_comments)
+        return fetch_comments(ydl, video_id, language, min_comments, to_screen, report_warning)
+
+    monkeypatch.setattr(nicocomments, "fetch_comments", record_min_comments)
+    return values
+
+
+def test_past_comments_are_not_loaded_by_default(min_comments_values):
+    NicoCommentsPP(logged_in(downloader())).run(video_info())
+    assert min_comments_values == [0]
+
+
+def test_past_comments_are_skipped_without_a_login(min_comments_values):
+    ydl = downloader()
+    NicoCommentsPP(ydl, lang="ja,en", comments="all").run(video_info())
+    assert min_comments_values == [0, 0]
+    assert ydl.warnings == [
+        "Past comments are not loaded because they need a login. Use --cookies-from-browser or --cookies"
+    ]
+
+
+def test_past_comments_are_loaded_with_a_login(min_comments_values):
+    ydl = logged_in(downloader())
+    NicoCommentsPP(ydl, comments="all").run(video_info())
+    assert min_comments_values == [None]
+    assert ydl.warnings == []
+
+
+def test_raw_json_is_not_saved_by_default(fake_fonts_and_comments):
+    _, info = NicoCommentsPP(downloader()).run(video_info())
+    assert list(info["requested_subtitles"]) == ["ja-comments"]
+
+
+def test_writejson_adds_the_raw_comments_as_the_last_subtitles(fake_fonts_and_comments):
+    info = video_info(requested_subtitles={"comments": {"ext": "json"}, "en": {"ext": "vtt"}})
+    _, info = NicoCommentsPP(downloader(), lang="ja,en", writejson="true").run(info)
+    subtitles = info["requested_subtitles"]
+    assert list(subtitles) == ["ja-comments", "en-comments", "en", "ja-comments-raw", "en-comments-raw"]
+    assert subtitles["ja-comments-raw"]["ext"] == "json"
+    saved = json.loads(subtitles["en-comments-raw"]["data"])
+    assert (saved["videoId"], saved["language"]) == ("sm9", "en")
+
+
+def test_json_postprocessor_is_inserted_before_the_embedding(fake_fonts_and_comments, used_fonts):
+    ydl = downloader()
+    info = video_info()
+    NicoCommentsPP(ydl, lang="ja", writejson="true").run(info)
+    NicoCommentsPP(ydl, lang="en", writejson="true").run(info)
+    assert info[JSON_SUBTITLES_KEY] == ["ja-comments-raw", "en-comments-raw"]
+    json_pp, embed_pp, fonts_pp = ydl._pps["post_process"]
+    assert isinstance(json_pp, NicoCommentJSONPP)
+    assert isinstance(embed_pp, FFmpegEmbedSubtitlePP)
+    assert isinstance(fonts_pp, NicoCommentFontsPP)
+
+
+@pytest.mark.parametrize(("embed_subtitles", "writejson"), [(False, "true"), (True, "false")])
+def test_json_postprocessor_is_added_only_for_embedded_raw_json(fake_fonts_and_comments, embed_subtitles, writejson):
+    ydl = downloader(embed_subtitles=embed_subtitles)
+    info = video_info()
+    NicoCommentsPP(ydl, writejson=writejson).run(info)
+    assert JSON_SUBTITLES_KEY not in info
+    assert not any(isinstance(pp, NicoCommentJSONPP) for pp in ydl._pps["post_process"])
 
 
 def test_comments_are_added_as_the_first_subtitle_track(fake_fonts_and_comments):

@@ -1,14 +1,22 @@
 import math
 import optparse
+import re
 from collections.abc import Collection, Mapping
 
 from yt_dlp.postprocessor.common import PostProcessor
 from yt_dlp.postprocessor.ffmpeg import FFmpegEmbedSubtitlePP
 from yt_dlp.utils import PostProcessingError
 
-from ._nicocomments.api import WATCH_API_LANGUAGES, CommentAPIError, fetch_comments
+from ._nicocomments.api import WATCH_API_LANGUAGES, CommentAPIError, fetch_comments, is_logged_in
 from ._nicocomments.ass import build_ass
-from ._nicocomments.attachments import ASS_CONTAINER, EMBEDDING_KEY, CommentEmbedding, NicoCommentFontsPP
+from ._nicocomments.attachments import (
+    ASS_CONTAINER,
+    EMBEDDING_KEY,
+    JSON_SUBTITLES_KEY,
+    CommentEmbedding,
+    NicoCommentFontsPP,
+    NicoCommentJSONPP,
+)
 from ._nicocomments.filters import NG_SCORE_THRESHOLDS
 from ._nicocomments.font_files import FontFile, add_font_chars
 from ._nicocomments.fonts import FontError, load_font_chains
@@ -55,6 +63,18 @@ def parse_boolean_option(name: str, value: str | int) -> bool:
     return parse_choice_option(name, value, BOOLEAN_VALUES)
 
 
+def parse_comments_option(value: str | int) -> int | None:
+    if isinstance(value, str) and value.strip().lower() == "all":
+        return None
+    if isinstance(value, str) and re.fullmatch(r"[0-9]+", value.strip()):
+        return int(value)
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    raise optparse.OptionValueError(
+        f"NicoComments: comments must be a non-negative integer or all, not {format_option_value(value)}"
+    )
+
+
 def parse_languages_option(value: str | list[str] | tuple[str, ...]) -> list[str]:
     values = value.split(",") if isinstance(value, str) else value
     if not isinstance(values, (list, tuple)) or not values:
@@ -77,6 +97,8 @@ class NicoCommentsPP(PostProcessor):
         nglevel="medium",
         lang="ja",
         embedfonts="true",
+        comments="0",
+        writejson="false",
         **kwargs,
     ):
         if kwargs:
@@ -87,6 +109,8 @@ class NicoCommentsPP(PostProcessor):
         self._ng_score_threshold = parse_choice_option("nglevel", nglevel, NG_SCORE_THRESHOLDS)
         self._languages = parse_languages_option(lang)
         self._embed_fonts = parse_boolean_option("embedfonts", embedfonts)
+        self._min_comments = parse_comments_option(comments)
+        self._write_json = parse_boolean_option("writejson", writejson)
 
     def run(self, info):
         if info.get("extractor_key") != "Niconico":
@@ -110,16 +134,33 @@ class NicoCommentsPP(PostProcessor):
         if self.get_param("simulate"):
             return [], info
 
+        min_comments = self._min_comments
+        if min_comments != 0 and not is_logged_in(self._downloader):
+            self.report_warning(
+                "Past comments are not loaded because they need a login. Use --cookies-from-browser or --cookies"
+            )
+            min_comments = 0
         try:
             font_chains = load_font_chains()
-            fetched = {language: fetch_comments(self._downloader, info["id"], language) for language in self._languages}
+            fetched = {
+                language: fetch_comments(
+                    self._downloader,
+                    info["id"],
+                    language,
+                    min_comments,
+                    lambda text, language=language: self.to_screen(f"{LANGUAGE_NAMES[language]}: {text}"),
+                    self.report_warning,
+                )
+                for language in self._languages
+            }
         except (CommentAPIError, FontError) as e:
             raise PostProcessingError(str(e)) from e
 
         content_length_ms = self._content_length_ms(info)
         comment_subtitles = {}
+        json_subtitles = {}
         font_chars: dict[FontFile, set[str]] = {}
-        for language, comments in fetched.items():
+        for language, (comments, raw) in fetched.items():
             slot_layers = layout_comments(
                 comments, font_chains, content_length_ms, self._ng_score_threshold, info["id"]
             )
@@ -130,10 +171,14 @@ class NicoCommentsPP(PostProcessor):
             data, used_chars = build_ass(slot_layers, width, height, self._opacity, language)
             add_font_chars(font_chars, used_chars)
             comment_subtitles[key] = {"ext": "ass", "name": name, "data": data}
+            if self._write_json:
+                json_subtitles[f"{key}-raw"] = {"ext": "json", "data": raw.to_json(info["id"], language)}
 
         other_subtitles = dict(info.get("requested_subtitles") or {})
         other_subtitles.pop(JSON_SUBTITLE_LANG, None)
-        info["requested_subtitles"] = {**comment_subtitles, **other_subtitles}
+        info["requested_subtitles"] = {**comment_subtitles, **other_subtitles, **json_subtitles}
+        if json_subtitles and self._insert_json_pp():
+            info.setdefault(JSON_SUBTITLES_KEY, []).extend(json_subtitles)
         if self._insert_fonts_pp():
             info.setdefault(EMBEDDING_KEY, []).append(
                 CommentEmbedding(
@@ -149,6 +194,15 @@ class NicoCommentsPP(PostProcessor):
         # and yt-dlp has no public API for the added postprocessors.
         pps = self._downloader._pps["post_process"]
         return max((i for i, pp in enumerate(pps) if isinstance(pp, FFmpegEmbedSubtitlePP)), default=None)
+
+    def _insert_json_pp(self) -> bool:
+        embed_index = self._embed_subtitle_index()
+        if embed_index is None:
+            return False
+        pps = self._downloader._pps["post_process"]
+        if not any(isinstance(pp, NicoCommentJSONPP) for pp in pps):
+            pps.insert(embed_index, NicoCommentJSONPP(self._downloader))
+        return True
 
     def _insert_fonts_pp(self) -> bool:
         embed_index = self._embed_subtitle_index()

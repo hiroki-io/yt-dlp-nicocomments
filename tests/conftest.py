@@ -1,3 +1,4 @@
+import http.cookiejar
 import io
 import json
 import struct
@@ -92,6 +93,30 @@ class FakeDownloader:
 
     def add_post_processor(self, pp, when="post_process"):
         self._pps.setdefault(when, []).append(pp)
+
+
+def logged_in(ydl):
+    ydl.cookiejar.set_cookie(
+        http.cookiejar.Cookie(
+            0,
+            "user_session",
+            "session",
+            None,
+            False,
+            ".nicovideo.jp",
+            True,
+            True,
+            "/",
+            False,
+            False,
+            None,
+            False,
+            None,
+            None,
+            {},
+        )
+    )
+    return ydl
 
 
 @pytest.fixture(autouse=True)

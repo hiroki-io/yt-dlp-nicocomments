@@ -88,10 +88,12 @@ semicolons:
 | Option         | Values                                    | Default  | Description                                                                            |
 | -------------- | ----------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
 | `lang`         | `ja`, `en`, or `zh`, separated by commas  | `ja`     | Comment languages. Each language becomes a separate subtitle track.                    |
+| `comments`     | A number of comments, or `all`            | `0`      | Minimum number of comments per language. See [Past comments](#past-comments).          |
 | `nglevel`      | `high`, `medium`, `low`, or `none`        | `medium` | Hide comments that many users added to their NG lists. `high` hides the most comments. |
 | `opacity`      | A number from `0` to `1`                  | `1`      | Comment opacity                                                                        |
-| `embedfonts`   | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Attach the fonts to the video file when `--embed-subs` is used                         |
+| `writejson`    | `true`, `yes`, `1`, `false`, `no`, or `0` | `false`  | Write comments to a JSON file. See [JSON files](#json-files).                          |
 | `defaulttrack` | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Mark the subtitle track of the first comment language as default                       |
+| `embedfonts`   | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Attach the fonts to the video file when `--embed-subs` is used                         |
 
 Example:
 
@@ -126,6 +128,22 @@ yt-dlp --skip-download --write-subs --use-postprocessor "NicoComments:when=video
 
 The ASS file does not contain the fonts, so install the font files linked in
 [Fonts](#fonts) on the computer that plays it.
+
+### Past comments
+
+The comment API returns only the recent comments of a video. When these comments
+are fewer than `comments`, the plugin loads older comments until it has at least
+that many comments for each language, or until no older comments are left.
+`comments=all` loads all past comments.
+
+Fetching past comments requires a free Niconico account. Pass your cookies to
+yt-dlp, for example with `--cookies-from-browser`:
+
+```sh
+yt-dlp --cookies-from-browser chrome --embed-subs \
+  --use-postprocessor "NicoComments:when=video;comments=10000" \
+  https://www.nicovideo.jp/watch/sm9
+```
 
 ### Burn the comments into the video
 

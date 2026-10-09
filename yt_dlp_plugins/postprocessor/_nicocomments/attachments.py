@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from yt_dlp.postprocessor.common import PostProcessor
 from yt_dlp.postprocessor.ffmpeg import FFmpegPostProcessor, FFmpegPostProcessorError
 from yt_dlp.utils import PostProcessingError, prepend_extension
 
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
 
 EMBEDDING_KEY = "__nicocomments_embedding"
+JSON_SUBTITLES_KEY = "__nicocomments_json_subtitles"
 ASS_CONTAINER = "mkv"
 
 
@@ -23,6 +25,16 @@ class CommentEmbedding:
     track_names: frozenset[str]
     fonts: dict[FontFile, frozenset[str]]
     default: bool
+
+
+class NicoCommentJSONPP(PostProcessor):
+    def run(self, info):
+        # FFmpegEmbedSubtitlePP warns about each JSON subtitle. yt-dlp moves the written files
+        # from the list in __files_to_move, so the JSON files are still moved.
+        keys = info.pop(JSON_SUBTITLES_KEY, [])
+        if subtitles := info.get("requested_subtitles"):
+            info["requested_subtitles"] = {key: value for key, value in subtitles.items() if key not in keys}
+        return [], info
 
 
 class NicoCommentFontsPP(FFmpegPostProcessor):

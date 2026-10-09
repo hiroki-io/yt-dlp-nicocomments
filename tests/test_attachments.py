@@ -11,8 +11,10 @@ from yt_dlp.postprocessor.ffmpeg import FFmpegEmbedSubtitlePP, FFmpegPostProcess
 from yt_dlp_plugins.postprocessor._nicocomments import attachments, font_files, fonts
 from yt_dlp_plugins.postprocessor._nicocomments.attachments import (
     EMBEDDING_KEY,
+    JSON_SUBTITLES_KEY,
     CommentEmbedding,
     NicoCommentFontsPP,
+    NicoCommentJSONPP,
 )
 
 ASS = """[Script Info]
@@ -114,6 +116,54 @@ def attached_files(info, tmp_path):
 
 def default_dispositions(info):
     return [stream["disposition"]["default"] for stream in streams(info, "subtitle")]
+
+
+def test_json_postprocessor_removes_only_the_raw_json_of_the_plugin(ydl):
+    info = {
+        "requested_subtitles": {
+            "ja-comments": {"ext": "ass"},
+            "ja-comments-raw": {"ext": "json"},
+            "x": {"ext": "json"},
+        },
+        JSON_SUBTITLES_KEY: ["ja-comments-raw"],
+    }
+    _, info = NicoCommentJSONPP(ydl).run(info)
+    assert list(info["requested_subtitles"]) == ["ja-comments", "x"]
+    assert JSON_SUBTITLES_KEY not in info
+
+
+def test_json_postprocessor_accepts_info_without_subtitles(ydl):
+    _, info = NicoCommentJSONPP(ydl).run({JSON_SUBTITLES_KEY: ["ja-comments-raw"]})
+    assert info == {}
+
+
+@requires_ffmpeg
+def test_raw_json_is_embedded_without_a_warning_and_kept(ydl, tmp_path):
+    video = tmp_path / "video.mkv"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=black:s=64x36:d=0.2", "-c:v", "mpeg4", video],
+        check=True,
+    )
+    ass_path, json_path = tmp_path / "video.ja-comments.ass", tmp_path / "video.ja-comments-raw.json"
+    ass_path.write_text(ASS)
+    json_path.write_text("{}")
+    info = {
+        "filepath": str(video),
+        "ext": "mkv",
+        "requested_subtitles": {
+            "ja-comments": {"ext": "ass", "name": "Japanese comments", "filepath": str(ass_path)},
+            "ja-comments-raw": {"ext": "json", "filepath": str(json_path)},
+        },
+        JSON_SUBTITLES_KEY: ["ja-comments-raw"],
+    }
+    _, info = NicoCommentJSONPP(ydl).run(info)
+    embed_pp = FFmpegEmbedSubtitlePP(ydl)
+    warnings = []
+    embed_pp.report_warning = warnings.append
+    files_to_delete, _ = embed_pp.run(info)
+    assert warnings == []
+    assert files_to_delete == [str(ass_path)]
+    assert len(streams(info, "subtitle")) == 1
 
 
 @requires_ffmpeg
