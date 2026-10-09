@@ -41,6 +41,9 @@ const ROOTS: Record<string, Anchor> = {
   layerProcessor: { kind: "class", contains: ["makeStagingSlot", "buildStagingParamsForMoving"] },
   stagingChats: { kind: "class", contains: ["getStagingChatList", "lastChatIndexForMoving"] },
   slotRepository: { kind: "class", contains: ["getOldestStaging", "reservedList"] },
+  layerAlpha: { contains: ["isTranslucent", "aiCommentStagingFilter"] },
+  stageAspectRatio: { name: "updateAspectRatio", contains: ["isShort"] },
+  fontFamilies: { kind: "class", contains: ["initIfNeed", "envFamilies"] },
 };
 
 const CONSTANTS: Record<string, Anchor> = {
@@ -56,6 +59,7 @@ const CONSTANTS: Record<string, Anchor> = {
   fonts: { contains: ["defont", "gothic", "mincho"] },
   scriptNames: { contains: ["ピザ", "デフォルト", "置換", "逆"] },
   scriptTargets: { contains: ["全", "コメ", "投コメ"] },
+  ngScoreThresholds: { contains: ["high", "middle", "low", "none"] },
 };
 
 async function fetchText(url: string): Promise<string> {

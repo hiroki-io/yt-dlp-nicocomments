@@ -1,5 +1,5 @@
 {
-  "bundle": "PlayerSeekBar-CGd3RUUk.js",
+  "bundle": "PlayerSeekBar-B1jycuBB.js",
   "constants": {
     "colors": {
       "white": "#ffffff",
@@ -113,6 +113,12 @@
       "投コメ": [
         "owner"
       ]
+    },
+    "ngScoreThresholds": {
+      "high": -1000,
+      "middle": -4800,
+      "low": -10000,
+      "none": 0
     }
   },
   "fingerprints": {
@@ -1332,6 +1338,109 @@
         "y 8f124a7f82809435",
         "y d5fa639007c56f42",
         "y f05470394d2cd5e3"
+      ]
+    },
+    "layerAlpha": {
+      "hash": "d160ec242b2ce1bf4ae8a62d27711742a6e73f175635882ade61b42530e14422",
+      "units": [
+        "r abdaed56324c2257",
+        "Ca 6b2a0eef5f0ffae5",
+        "$ 1aef14c513061b9d",
+        "TM d442647be6961f3c",
+        "wM 7a1f0d23441490d6",
+        "CM b8c4a7ede2502cd9",
+        "SM 3276c4b2a359cddc",
+        "t 56c00b26648e7de5",
+        "ba 48b9e377657f89a2",
+        "z 1aef14c513061b9d",
+        "Or d442647be6961f3c",
+        "Dr 7a1f0d23441490d6",
+        "Er b8c4a7ede2502cd9",
+        "Tr 3276c4b2a359cddc",
+        "xa 38c767429a9a5c78",
+        "Sa 5a96265178bfd337",
+        "Et 9a585013e33b72d5",
+        "wt 641a4c1ca35012e1",
+        "Tt b052852072306568",
+        "i f374052c82d1fc21",
+        "r ee5db0177c42eaa7"
+      ],
+      "members": [
+        "alpha 152d4bf833c2a647",
+        "commentLayers 6a6591cb9445fe5e",
+        "initialized ab8a9b7ec19a6fe6"
+      ]
+    },
+    "stageAspectRatio": {
+      "hash": "32e4f22c72c3e9bd86a303398439656dc927dd9e3b4db1e4ab2588bf1535a273",
+      "units": [
+        "updateAspectRatio f2d65098aec0a2ea",
+        "rM f85fc5445efe75f9"
+      ],
+      "members": []
+    },
+    "fontFamilies": {
+      "hash": "ecac67f120be2c652780f465dd8c7a1051f5ef68830531f95f42d7cb6fa1b3ee",
+      "units": [
+        "cv 49028cf726f4df73",
+        "M_ 9133ad20fb8b5246",
+        "O_ b6cfde09edd74da1",
+        "k_ b9594b81c6b40ea8",
+        "A_ 9cdd5afc5cad004f",
+        "G faed8f0cd80f6c35",
+        "D_ ce66470e18f3579a",
+        "<statement> e05b8ad1edc55948",
+        "nv 9133ad20fb8b5246",
+        "Z_ faed8f0cd80f6c35",
+        "X_ 551c49ac25c17cb8",
+        "$_ 51e2268b9ef7282b",
+        "I_ cb0ab0a68818c8be",
+        "Q_ 4e4c6d272e422e1c",
+        "tv 51e2268b9ef7282b",
+        "z_ 3745ef78a881dfe8",
+        "ev 9de8ed990de4ce82",
+        "rv 9133ad20fb8b5246",
+        "ov 9133ad20fb8b5246",
+        "iv 51e2268b9ef7282b",
+        "av 9133ad20fb8b5246",
+        "sv 732ea13db9d53294",
+        "K_ 9133ad20fb8b5246",
+        "H_ 150f25c03be5047f",
+        "W_ e143560bd00a173d",
+        "U_ 5e59309012b40f40",
+        "G_ 51e2268b9ef7282b",
+        "R_ b124b8fb3c235562",
+        "Y_ 9133ad20fb8b5246",
+        "V_ 9133ad20fb8b5246",
+        "P_ 721ef1b39613a934",
+        "L_ e143560bd00a173d",
+        "F_ aff8e26a985ac6a0",
+        "B_ 51e2268b9ef7282b",
+        "q_ 9133ad20fb8b5246",
+        "J_ 9133ad20fb8b5246",
+        "j_ 9133ad20fb8b5246",
+        "N_ 9133ad20fb8b5246",
+        "Dn 5fdee51fde6bb21c",
+        "On 46d207e97d440ac4",
+        "dn f40f5aae64db2350",
+        "an ea07c9245209c5f4"
+      ],
+      "members": [
+        "constructor 854e250372dd74a2",
+        "envFamilies fd608c1db1a65ae3",
+        "families d3c875a236250638",
+        "getFamilies 0839f7a95d6d417c",
+        "initIfNeed fd9a54baffce82e7",
+        "isDefined 704b069e3a1255ff",
+        "isEmptyArray 99d449f4070e907a",
+        "isEmptyString 28843f6619395ae5",
+        "isFunction 1a8df80f95c2a990",
+        "isNull 2e69cd260b25bdcf",
+        "isNumber 68596947958671dd",
+        "isString 0c771f7ae322e1a7",
+        "isUndefined be657c4028903d45",
+        "resetFont a53b113a51e69861",
+        "setFont 37c2f71fa61085bf"
       ]
     }
   }

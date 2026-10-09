@@ -9,6 +9,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.comments import (
     PREMIUM_COLORS,
     SIZES,
 )
+from yt_dlp_plugins.postprocessor._nicocomments.filters import NG_SCORE_THRESHOLDS
 from yt_dlp_plugins.postprocessor._nicocomments.layout import (
     LINE_COUNT_FOR_CHARACTER_SIZE,
     LINE_COUNT_FOR_LINE_HEIGHT,
@@ -45,3 +46,11 @@ def test_nicoscripts_match_the_official_player():
     assert {name: OFFICIAL["scriptNames"][name] for name in SCRIPT_TYPES} == SCRIPT_TYPES
     targets = {name: frozenset(kind == "owner" for kind in kinds) for name, kinds in OFFICIAL["scriptTargets"].items()}
     assert targets == TARGETS
+
+
+def test_ng_score_thresholds_match_the_official_player():
+    # The official player names the medium level "middle" and disables the filter with 0.
+    official = {
+        "medium" if name == "middle" else name: score or None for name, score in OFFICIAL["ngScoreThresholds"].items()
+    }
+    assert official == NG_SCORE_THRESHOLDS
