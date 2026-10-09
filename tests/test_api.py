@@ -1,3 +1,4 @@
+import http.cookiejar
 import io
 
 import pytest
@@ -13,7 +14,33 @@ from yt_dlp_plugins.postprocessor._nicocomments.api import (
 
 
 def http_error(status):
-    return HTTPError(Response(io.BytesIO(), "https://www.nicovideo.jp/", {}, status=status, reason="Forbidden"))
+    return HTTPError(
+        Response(io.BytesIO(), "https://www.nicovideo.jp/", {}, status=status, reason=http.HTTPStatus(status).phrase)
+    )
+
+
+def logged_in(ydl):
+    ydl.cookiejar.set_cookie(
+        http.cookiejar.Cookie(
+            0,
+            "user_session",
+            "session",
+            None,
+            False,
+            ".nicovideo.jp",
+            True,
+            True,
+            "/",
+            False,
+            False,
+            None,
+            False,
+            None,
+            None,
+            {},
+        )
+    )
+    return ydl
 
 
 def watch_api():
@@ -65,17 +92,32 @@ def test_threads_are_requested_with_the_nv_comment_params_and_headers():
     assert request.headers["X-Frontend-Id"] == "6"
 
 
-def test_watch_data_falls_back_to_the_guest_api():
-    ydl = FakeDownloader([http_error(403), watch_api()])
+def test_watch_data_is_requested_from_the_guest_api_without_a_session():
+    ydl = FakeDownloader([watch_api()])
+    assert "comment" in fetch_watch_data(ydl, "sm9")
+    assert "/api/watch/v3_guest/sm9?" in ydl.requests[0].url
+
+
+def test_watch_data_is_requested_from_the_user_api_with_a_session():
+    ydl = logged_in(FakeDownloader([watch_api()]))
+    assert "comment" in fetch_watch_data(ydl, "sm9")
+    assert "/api/watch/v3/sm9?" in ydl.requests[0].url
+
+
+def test_watch_data_falls_back_to_the_guest_api_when_the_user_api_fails():
+    ydl = logged_in(FakeDownloader([http_error(400), watch_api()]))
     assert "comment" in fetch_watch_data(ydl, "sm9")
     assert "/api/watch/v3/sm9?" in ydl.requests[0].url
     assert "/api/watch/v3_guest/sm9?" in ydl.requests[1].url
+    assert ydl.warnings == [
+        "Loading the watch API as a guest because the logged-in request failed: HTTP Error 400: Bad Request"
+    ]
 
 
 def test_watch_data_is_requested_through_the_geo_verification_proxy():
-    ydl = FakeDownloader([http_error(403), watch_api()], {"geo_verification_proxy": "http://proxy.example"})
+    ydl = FakeDownloader([watch_api()], {"geo_verification_proxy": "http://proxy.example"})
     fetch_watch_data(ydl, "sm9")
-    assert [request.headers["Ytdl-request-proxy"] for request in ydl.requests] == ["http://proxy.example"] * 2
+    assert ydl.requests[0].headers["Ytdl-request-proxy"] == "http://proxy.example"
 
 
 def test_watch_data_is_requested_without_a_proxy_header_by_default():
@@ -91,15 +133,15 @@ def test_watch_data_is_requested_in_the_comment_language(args, language):
     assert ydl.requests[0].url.endswith(f"&i18nLanguage={language}")
 
 
-def test_watch_data_error_message_contains_the_last_status():
-    ydl = FakeDownloader([http_error(403), {"meta": {"status": 404}}])
+def test_watch_data_error_message_contains_the_status():
+    ydl = FakeDownloader([{"meta": {"status": 404}}])
     with pytest.raises(CommentAPIError, match=r"^failed to load the watch API: status 404$"):
         fetch_watch_data(ydl, "sm9")
 
 
 def test_watch_data_error_message_contains_the_http_error():
-    ydl = FakeDownloader([http_error(403), http_error(403)])
-    with pytest.raises(CommentAPIError, match=r"^failed to load the watch API: HTTP Error 403: Forbidden$") as e:
+    ydl = logged_in(FakeDownloader([http_error(400), http_error(404)]))
+    with pytest.raises(CommentAPIError, match=r"^failed to load the watch API: HTTP Error 404: Not Found$") as e:
         fetch_watch_data(ydl, "sm9")
     assert isinstance(e.value.__cause__, HTTPError)
 

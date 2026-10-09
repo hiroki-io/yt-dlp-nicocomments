@@ -21,27 +21,40 @@ def fetch_json(ydl, url: str, data: dict | None = None, headers: dict | None = N
     return json.loads(fetch_bytes(ydl, url, body, headers))
 
 
+def is_logged_in(ydl) -> bool:
+    cookies = ydl.cookiejar.get_cookies_for_url("https://www.nicovideo.jp/")
+    return any(cookie.name == "user_session" and cookie.value for cookie in cookies)
+
+
 def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
     headers = dict(API_HEADERS)
     if proxy := ydl.params.get("geo_verification_proxy"):
         headers["Ytdl-request-proxy"] = proxy
-    cause = detail = None
-    for path in ("v3", "v3_guest"):
-        track_id = f"AAAAAAAAAA_{round(time.time() * 1000)}"
-        url = update_url_query(
-            f"https://www.nicovideo.jp/api/watch/{path}/{video_id}",
-            {"actionTrackId": track_id, "i18nLanguage": WATCH_API_LANGUAGES[language]},
-        )
+    api = None
+    if is_logged_in(ydl):
         try:
-            api = fetch_json(ydl, url, headers=headers)
+            api = request_watch_api(ydl, "v3", video_id, language, headers)
         except HTTPError as e:
-            cause, detail = e, str(e)
-            continue
-        status = (api.get("meta") or {}).get("status")
-        if status == 200:
-            return api["data"]
-        cause, detail = None, f"status {status}"
-    raise CommentAPIError(f"failed to load the watch API: {detail}") from cause
+            # A stale user_session cookie can make the v3 API fail even for videos open to guests.
+            ydl.report_warning(f"Loading the watch API as a guest because the logged-in request failed: {e}")
+    if api is None:
+        try:
+            api = request_watch_api(ydl, "v3_guest", video_id, language, headers)
+        except HTTPError as e:
+            raise CommentAPIError(f"failed to load the watch API: {e}") from e
+    status = (api.get("meta") or {}).get("status")
+    if status != 200:
+        raise CommentAPIError(f"failed to load the watch API: status {status}")
+    return api["data"]
+
+
+def request_watch_api(ydl, path: str, video_id: str, language: str, headers: dict) -> dict:
+    track_id = f"AAAAAAAAAA_{round(time.time() * 1000)}"
+    url = update_url_query(
+        f"https://www.nicovideo.jp/api/watch/{path}/{video_id}",
+        {"actionTrackId": track_id, "i18nLanguage": WATCH_API_LANGUAGES[language]},
+    )
+    return fetch_json(ydl, url, headers=headers)
 
 
 def fetch_comments(ydl, video_id: str, language: str = "ja") -> VideoComments:

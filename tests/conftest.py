@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from PIL import ImageFont
+from yt_dlp.cookies import YoutubeDLCookieJar
 
 from yt_dlp_plugins.postprocessor._nicocomments import fetch, font_files, fonts
 from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS, Chat
@@ -62,6 +63,7 @@ class FakeDownloader:
     def __init__(self, responses=(), params=None):
         self.responses = list(responses)
         self.params = params or {}
+        self.cookiejar = YoutubeDLCookieJar()
         self.requests = []
         self.warnings = []
         self.messages = []
