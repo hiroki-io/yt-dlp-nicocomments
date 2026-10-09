@@ -4,6 +4,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Any
 
 from yt_dlp.networking.exceptions import HTTPError, RequestError
 from yt_dlp.utils import update_url_query
@@ -11,15 +12,12 @@ from yt_dlp.utils import update_url_query
 from .assemble import assemble_comments, thread_key
 from .comments import VideoComments
 from .fetch import fetch_bytes
+from .response import CommentAPIError, check_comment_data, check_threads, expect, unexpected_response
 
 API_HEADERS = {"X-Frontend-Id": "6", "X-Frontend-Version": "0"}
 WATCH_API_LANGUAGES = {"ja": "ja-jp", "en": "en-us", "zh": "zh-tw"}
 # The comment API accepts 60 requests a minute.
 PAST_PAGE_DELAY = 1
-
-
-class CommentAPIError(Exception):
-    pass
 
 
 class PastCommentsError(Exception):
@@ -60,9 +58,13 @@ def without(data: dict, *keys: str) -> dict:
     return {key: value for key, value in data.items() if key not in keys}
 
 
-def fetch_json(ydl, url: str, data: dict | None = None, headers: dict | None = None) -> dict:
+def fetch_json(ydl, url: str, data: dict | None = None, headers: dict | None = None) -> Any:
     body = json.dumps(data).encode() if data is not None else None
-    return json.loads(fetch_bytes(ydl, url, body, headers))
+    response = fetch_bytes(ydl, url, body, headers)
+    try:
+        return json.loads(response)
+    except ValueError as e:
+        raise unexpected_response(str(e)) from e
 
 
 def is_logged_in(ydl) -> bool:
@@ -86,10 +88,16 @@ def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
             api = request_watch_api(ydl, "v3_guest", video_id, language, headers)
         except HTTPError as e:
             raise CommentAPIError(f"failed to load the watch API: {e}") from e
-    status = (api.get("meta") or {}).get("status")
+    meta = api.get("meta") if isinstance(api, dict) else None
+    status = meta.get("status") if isinstance(meta, dict) else None
     if status != 200:
         raise CommentAPIError(f"failed to load the watch API: status {status}")
+    expect(isinstance(api.get("data"), dict), "data in the watch API is not an object")
     return api["data"]
+
+
+def fetch_comment_data(ydl, video_id: str, language: str) -> dict:
+    return check_comment_data(fetch_watch_data(ydl, video_id, language).get("comment"))
 
 
 def request_watch_api(ydl, path: str, video_id: str, language: str, headers: dict) -> dict:
@@ -109,27 +117,33 @@ def fetch_comments(
     to_screen: Callable[[str], None] = lambda _: None,
     report_warning: Callable[[str], None] = lambda _: None,
 ) -> tuple[VideoComments, RawComments]:
+    fetched_at = datetime.now(timezone.utc)
     try:
-        fetched_at = datetime.now(timezone.utc)
-        comment = fetch_watch_data(ydl, video_id, language)["comment"]
+        comment = fetch_comment_data(ydl, video_id, language)
         threads = fetch_threads(ydl, comment)
-        if min_comments != 0:
-            threads = fetch_past_threads(
-                past_page_fetcher(ydl, video_id, language, comment),
-                threads,
-                min_comments,
-                math.floor(fetched_at.timestamp()),
-                to_screen,
-                report_warning,
-            )
-        return assemble_comments(comment, threads), RawComments(comment, threads, fetched_at)
     except RequestError as e:
         raise CommentAPIError(f"failed to load comments: {e}") from e
-    except (AttributeError, KeyError, TypeError, ValueError) as e:
-        raise CommentAPIError(f"unexpected response from the comment API: {e!r}") from e
+    if min_comments != 0:
+        threads = fetch_past_threads(
+            past_page_fetcher(ydl, video_id, language, comment),
+            threads,
+            min_comments,
+            math.floor(fetched_at.timestamp()),
+            to_screen,
+            report_warning,
+        )
+    return assemble_comments(comment, threads), RawComments(comment, threads, fetched_at)
 
 
 def fetch_threads(ydl, comment: dict, additionals: dict | None = None) -> list[dict]:
+    response = request_threads(ydl, comment, additionals)
+    data = response.get("data") if isinstance(response, dict) else None
+    if not isinstance(data, dict):
+        raise unexpected_response("data in the threads is not an object")
+    return check_threads(data.get("threads"))
+
+
+def request_threads(ydl, comment: dict, additionals: dict | None = None) -> Any:
     nv = comment["nvComment"]
     return fetch_json(
         ydl,
@@ -142,7 +156,7 @@ def fetch_threads(ydl, comment: dict, additionals: dict | None = None) -> list[d
             "Referer": "https://www.nicovideo.jp/",
             "X-Client-Os-Type": "others",
         },
-    )["data"]["threads"]
+    )
 
 
 def fetch_past_threads(
@@ -166,9 +180,6 @@ def fetch_past_threads(
             read_threads = [read_past_thread(thread, when) for thread in fetch_page(when)]
         except (PastCommentsError, CommentAPIError, RequestError) as e:
             report_warning(f"Stopped loading past comments: {e}")
-            break
-        except (AttributeError, KeyError, TypeError, ValueError) as e:
-            report_warning(f"Stopped loading past comments: unexpected response from the comment API: {e!r}")
             break
         page += 1
         oldest_of_threads = [oldest for _, _, oldest in read_threads if oldest is not None]
@@ -195,13 +206,23 @@ def fetch_past_threads(
 
 
 def read_past_thread(thread: dict, when: int) -> tuple[tuple[str, str], dict, int | None]:
+    posted = []
     for raw in thread["comments"]:
-        if not isinstance(raw["id"], str) or not isinstance(raw["no"], int):
-            raise TypeError(f"invalid id or no in a comment: {raw['id']!r}, {raw['no']!r}")
+        expect(isinstance(raw.get("no"), int), f"no number in the past comment {raw['id']!r}")
+        posted.append(math.floor(posted_at(raw).timestamp()))
     # The owner thread ignores "when" and returns all of its comments, so only the comments up to "when"
     # can move the next page.
-    posted = [math.floor(datetime.fromisoformat(raw["postedAt"]).timestamp()) for raw in thread["comments"]]
     return thread_key(thread), thread, min((seconds for seconds in posted if seconds <= when), default=None)
+
+
+def posted_at(raw: dict) -> datetime:
+    value = raw.get("postedAt")
+    if not isinstance(value, str):
+        raise unexpected_response(f"no postedAt in the comment {raw['id']!r}")
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError as e:
+        raise unexpected_response(str(e)) from e
 
 
 def all_comments_loaded(threads: dict[tuple[str, str], dict], seen: dict[tuple[str, str], set[str]]) -> bool:
@@ -227,7 +248,7 @@ def fetch_past_page(ydl, video_id: str, language: str, comment: dict, when: int)
         if e.status != 400:
             raise
     # The thread key expires in about 10 minutes.
-    comment = fetch_watch_data(ydl, video_id, language)["comment"]
+    comment = fetch_comment_data(ydl, video_id, language)
     try:
         return fetch_threads(ydl, comment, {"when": when}), comment
     except HTTPError as e:

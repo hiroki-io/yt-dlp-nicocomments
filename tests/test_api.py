@@ -8,6 +8,7 @@ from conftest import FakeDownloader, logged_in
 from yt_dlp.networking import Response
 from yt_dlp.networking.exceptions import HTTPError
 
+from yt_dlp_plugins.postprocessor._nicocomments import api
 from yt_dlp_plugins.postprocessor._nicocomments.api import (
     CommentAPIError,
     RawComments,
@@ -57,7 +58,7 @@ def thread(thread_id, fork, *nos):
     return {
         "id": thread_id,
         "fork": fork,
-        "comments": [{"no": no, "vposMs": 1000, "body": "a", "commands": []} for no in nos],
+        "comments": [{"id": str(no), "no": no, "vposMs": 1000, "body": "a", "commands": []} for no in nos],
     }
 
 
@@ -134,6 +135,56 @@ def test_watch_data_error_message_contains_the_http_error():
 def test_unexpected_response_raises_comment_api_error():
     with pytest.raises(CommentAPIError, match="unexpected response"):
         fetch_comments(FakeDownloader([{"meta": {"status": 200}, "data": {}}]), "sm9")
+
+
+def test_invalid_json_raises_comment_api_error():
+    with pytest.raises(CommentAPIError, match=r"^unexpected response from the comment API: Expecting value"):
+        fetch_comments(FakeDownloader([b"<html>"]), "sm9")
+
+
+def test_watch_data_without_layers_raises_comment_api_error():
+    watch = watch_api()
+    del watch["data"]["comment"]["layers"]
+    with pytest.raises(
+        CommentAPIError, match=r"^unexpected response from the comment API: comment.layers is not an array of objects$"
+    ):
+        fetch_comments(FakeDownloader([watch]), "sm9")
+
+
+@pytest.mark.parametrize("key", ["id", "vposMs"])
+def test_comment_without_a_required_key_raises_comment_api_error(key):
+    threads = {"data": {"threads": [thread("2", "main", 1)]}}
+    del threads["data"]["threads"][0]["comments"][0][key]
+    with pytest.raises(CommentAPIError, match=r"^unexpected response from the comment API: invalid comment"):
+        fetch_comments(FakeDownloader([watch_api(), threads]), "sm9")
+
+
+@pytest.mark.parametrize("key", ["no", "score"])
+def test_comment_with_null_no_or_score_raises_comment_api_error(key):
+    threads = {"data": {"threads": [thread("2", "main", 1)]}}
+    threads["data"]["threads"][0]["comments"][0][key] = None
+    with pytest.raises(CommentAPIError, match=r"^unexpected response from the comment API: invalid comment '1'$"):
+        fetch_comments(FakeDownloader([watch_api(), threads]), "sm9")
+
+
+def test_errors_of_the_plugin_are_not_reported_as_unexpected_responses(monkeypatch):
+    def assemble_comments(comment, threads):
+        raise KeyError("bug")
+
+    monkeypatch.setattr(api, "assemble_comments", assemble_comments)
+    threads = {"data": {"threads": [thread("1", "owner", 1)]}}
+    with pytest.raises(KeyError, match="bug"):
+        fetch_comments(FakeDownloader([watch_api(), threads]), "sm9")
+
+
+def test_errors_of_the_plugin_in_the_past_pages_are_not_reported_as_warnings(monkeypatch):
+    def read_past_thread(thread, when):
+        raise KeyError("bug")
+
+    monkeypatch.setattr(api, "read_past_thread", read_past_thread)
+    ydl = FakeDownloader([threads_response(raw_comment("a", 1, "1970-01-01T00:10:00+00:00"))])
+    with pytest.raises(KeyError, match="bug"):
+        past_threads(ydl, None)
 
 
 def raw_comment(comment_id, no, posted_at):
@@ -356,7 +407,9 @@ def test_comments_of_an_unexpected_past_page_are_not_added():
     )
     warnings: list[str] = []
     threads = past_threads(ydl, None, warnings=warnings)
-    assert warnings == ["Stopped loading past comments: unexpected response from the comment API: KeyError('postedAt')"]
+    assert warnings == [
+        "Stopped loading past comments: unexpected response from the comment API: no postedAt in the comment 'c'"
+    ]
     assert [raw["no"] for raw in threads[0]["comments"]] == [2]
 
 
@@ -365,7 +418,9 @@ def test_unexpected_watch_data_in_the_past_pages_keeps_the_loaded_comments():
     latest = [{"id": "2", "fork": "main", "comments": [raw_comment("a", 1, "1970-01-01T00:10:00+00:00")]}]
     warnings: list[str] = []
     assert past_threads(ydl, None, latest, warnings=warnings) == latest
-    assert warnings == ["Stopped loading past comments: unexpected response from the comment API: KeyError('comment')"]
+    assert warnings == [
+        "Stopped loading past comments: unexpected response from the comment API: comment is not an object"
+    ]
 
 
 def test_past_pages_are_added_to_the_layers_and_the_raw_comments():

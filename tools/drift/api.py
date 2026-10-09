@@ -6,8 +6,8 @@ from yt_dlp import YoutubeDL
 from yt_dlp_plugins.postprocessor._nicocomments.api import (
     WATCH_API_LANGUAGES,
     CommentAPIError,
-    fetch_threads,
     fetch_watch_data,
+    request_threads,
 )
 
 VIDEO_ID = "sm9"
@@ -29,7 +29,7 @@ COMMENT_SCHEMA = {
     "postedAt": str,
     "score": int,
 }
-THREADS_SCHEMA = [{"id": str, "fork": str, "comments": [COMMENT_SCHEMA]}]
+THREADS_SCHEMA = {"data": {"threads": [{"id": str, "fork": str, "comments": [COMMENT_SCHEMA]}]}}
 
 
 def check(value, schema, path: str) -> list[str]:
@@ -64,10 +64,14 @@ def check_language(ydl, language: str) -> tuple[list[str], int, int]:
     actual = watch["comment"]["nvComment"]["params"].get("language")
     if actual != WATCH_API_LANGUAGES[language]:
         return [f"{path}.comment.nvComment.params.language is {actual!r}"], 0, 0
-    threads = fetch_threads(ydl, watch["comment"])
-    problems = check(threads, THREADS_SCHEMA, f"threads({language})")
+    try:
+        response = request_threads(ydl, watch["comment"])
+    except CommentAPIError as e:
+        return [f"{language}: {e}"], 0, 0
+    problems = check(response, THREADS_SCHEMA, f"threads({language})")
     if problems:
         return problems, 0, 0
+    threads = response["data"]["threads"]
     comments = [comment for thread in threads for comment in thread["comments"]]
     if not any(thread["hasNicoscript"] for thread in watch["comment"]["threads"]):
         problems.append(f"{language}: no thread of {VIDEO_ID} has hasNicoscript")
