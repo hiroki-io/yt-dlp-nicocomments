@@ -18,12 +18,13 @@ from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS
 
 WIDTH, HEIGHT = 1920, 1080
 EM, X, BASELINE = 72, 100, 300
-TEXT = "あいうABCgjÉ漢字123\u2004\U0001d47a❊们한"
+TEXT = "あいうABCgjÉ漢字123\u2004\U0001d47a❊们한วิ"
 FONT_SELECTION = re.compile(r"fontselect: \((.*), \d+, \d+\) -> .*, (\S+)$")
 POSTSCRIPT_NAMES = {
     font_files.EMOJI: "NotoEmoji-Regular",
     font_files.MATH: "NotoSansMath-Regular",
     font_files.SYMBOLS: "NotoSansSymbols2-Regular",
+    font_files.THAI: "NotoSansThai-Regular",
 }
 
 

@@ -81,10 +81,16 @@ SANS_KR_REGULAR = FontFile(
     "https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf",
     "d9c48583236330acb9a6e2ead16971045280349fea2f4b8b8cf30d715b4a6e5a",
 )
+# Kaomoji often use Thai letters such as "ง" and "ว".
+THAI = FontFile(
+    "Noto Sans Thai",
+    "https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/notosansthai/NotoSansThai%5Bwdth%2Cwght%5D.ttf",
+    "5a1c559bb539583c8a1fd99d1c5b9491e5e14478c9cd2bd0970d5c3096cc9ef8",
+)
 CHAIN_FONTS = {"defont": SANS_BOLD, "gothic": SANS_REGULAR, "mincho": SERIF_REGULAR}
 # Ink bounds of "|ÉqÅM" above and below the baseline, in font units.
 METRICS_STRING_BOUNDS = {SANS_BOLD: (1010, 284), SANS_REGULAR: (983, 279), SERIF_REGULAR: (973, 272)}
-FALLBACK_FONTS = (EMOJI, MATH, SYMBOLS, SANS_SC_REGULAR, SANS_KR_REGULAR)
+FALLBACK_FONTS = (EMOJI, MATH, SYMBOLS, SANS_SC_REGULAR, SANS_KR_REGULAR, THAI)
 FONT_FILES = (*CHAIN_FONTS.values(), *FALLBACK_FONTS)
 LICENSE_FILES = (
     LicenseFile(
@@ -109,5 +115,10 @@ LICENSE_FILES = (
         "NotoSansSymbols2.txt",
         "https://raw.githubusercontent.com/google/fonts/7b6724ac7ececc713e9ba93af309f7520c9a80a3/ofl/notosanssymbols2/OFL.txt",
         (SYMBOLS,),
+    ),
+    LicenseFile(
+        "NotoSansThai.txt",
+        "https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/notosansthai/OFL.txt",
+        (THAI,),
     ),
 )

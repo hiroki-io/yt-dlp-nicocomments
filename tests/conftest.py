@@ -29,6 +29,27 @@ def cmap_format12(groups: list[tuple[int, int, int]]) -> bytes:
     return struct.pack(">HHIII", 12, 0, 16 + len(body), 0, len(groups)) + body
 
 
+def cmap_format4(segments: list[tuple[int, int, int, list[int] | None]]) -> bytes:
+    count = len(segments)
+    glyphs = []
+    range_offsets = []
+    for i, (_, _, _, segment_glyphs) in enumerate(segments):
+        if segment_glyphs is None:
+            range_offsets.append(0)
+        else:
+            range_offsets.append(2 * (count - i + len(glyphs)))
+            glyphs += segment_glyphs
+    body = (
+        struct.pack(f">{count}H", *(end for _, end, _, _ in segments))
+        + b"\0\0"
+        + struct.pack(f">{count}H", *(start for start, _, _, _ in segments))
+        + struct.pack(f">{count}h", *(delta for _, _, delta, _ in segments))
+        + struct.pack(f">{count}H", *range_offsets)
+        + struct.pack(f">{len(glyphs)}H", *glyphs)
+    )
+    return struct.pack(">7H", 4, 14 + len(body), 0, 2 * count, 0, 0, 0) + body
+
+
 class FixedWidthChain:
     def text_width(self, text: str, px: int) -> float:
         return len(text) * px

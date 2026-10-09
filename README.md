@@ -20,6 +20,7 @@ The plugin lays out and draws comments with:
   ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf))
 - Noto Sans KR
   ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf))
+- [Noto Sans Thai](https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/notosansthai/NotoSansThai%5Bwdth%2Cwght%5D.ttf)
 
 The package includes these fonts under the SIL Open Font License 1.1. With
 `--embed-subs`, the plugin saves the video as an MKV file and attaches the fonts

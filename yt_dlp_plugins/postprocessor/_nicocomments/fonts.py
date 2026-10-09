@@ -67,17 +67,48 @@ def extends_cluster(text: str) -> list[bool]:
 
 
 def parse_cmap(data: bytes) -> dict[int, int]:
+    subtables = {}
     for i in range(struct.unpack_from(">H", data, 2)[0]):
         platform, encoding, offset = struct.unpack_from(">HHI", data, 4 + 8 * i)
-        if (platform, encoding) == (3, 10) and struct.unpack_from(">H", data, offset)[0] == 12:
-            break
-    else:
-        raise ValueError("no format 12 Unicode cmap subtable")
+        subtables.setdefault((platform, encoding, struct.unpack_from(">H", data, offset)[0]), offset)
+    if (offset := subtables.get((3, 10, 12))) is not None:
+        return parse_cmap_format12(data, offset)
+    # Noto Sans Thai has no characters outside the BMP, and this is its only Windows subtable.
+    if (offset := subtables.get((3, 1, 4))) is not None:
+        return parse_cmap_format4(data, offset)
+    raise ValueError("no (3, 10) format 12 or (3, 1) format 4 cmap subtable")
+
+
+def parse_cmap_format12(data: bytes, offset: int) -> dict[int, int]:
     mapping = {}
     for i in range(struct.unpack_from(">I", data, offset + 12)[0]):
         start, end, glyph = struct.unpack_from(">III", data, offset + 16 + 12 * i)
         for code in range(start, end + 1):
             mapping[code] = glyph + code - start
+    return mapping
+
+
+def parse_cmap_format4(data: bytes, offset: int) -> dict[int, int]:
+    count = struct.unpack_from(">H", data, offset + 6)[0] // 2
+    ends = struct.unpack_from(f">{count}H", data, offset + 14)
+    starts = struct.unpack_from(f">{count}H", data, offset + 16 + 2 * count)
+    deltas = struct.unpack_from(f">{count}h", data, offset + 16 + 4 * count)
+    range_offsets_start = offset + 16 + 6 * count
+    mapping = {}
+    for i, (start, end, delta) in enumerate(zip(starts, ends, deltas, strict=True)):
+        range_offset_position = range_offsets_start + 2 * i
+        range_offset = struct.unpack_from(">H", data, range_offset_position)[0]
+        for code in range(start, end + 1):
+            if code == 0xFFFF:
+                continue
+            if range_offset:
+                glyph = struct.unpack_from(">H", data, range_offset_position + range_offset + 2 * (code - start))[0]
+                if glyph:
+                    glyph = (glyph + delta) & 0xFFFF
+            else:
+                glyph = (code + delta) & 0xFFFF
+            if glyph:
+                mapping[code] = glyph
     return mapping
 
 

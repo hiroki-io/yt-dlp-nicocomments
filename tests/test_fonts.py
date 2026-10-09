@@ -1,6 +1,7 @@
 import functools
 import hashlib
 import io
+import re
 import shutil
 import struct
 import sys
@@ -8,7 +9,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from conftest import cmap_format12, cmap_table, pillow_font
+from conftest import cmap_format4, cmap_format12, cmap_table, pillow_font
 
 from yt_dlp_plugins.postprocessor._nicocomments import font_files, fonts
 from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS
@@ -32,13 +33,14 @@ def test_license_files_are_in_the_repository():
 
 @pytest.mark.parametrize("key", FONT_KEYS)
 def test_chain_uses_its_font_and_then_the_fallback_fonts(chains, key):
-    assert [chains[key].face_for(char).font for char in "あ\U0001f600\u2004❊们한"] == [
+    assert [chains[key].face_for(char).font for char in "あ\U0001f600\u2004❊们한ว"] == [
         font_files.CHAIN_FONTS[key],
         font_files.EMOJI,
         font_files.MATH,
         font_files.SYMBOLS,
         font_files.SANS_SC_REGULAR,
         font_files.SANS_KR_REGULAR,
+        font_files.THAI,
     ]
 
 
@@ -74,9 +76,25 @@ def test_parse_cmap_maps_format12_groups():
     }
 
 
-def test_parse_cmap_rejects_tables_without_a_windows_format12_subtable():
+def test_parse_cmap_maps_format4_segments():
+    format4 = cmap_format4([(0x41, 0x42, 4, None), (0xE01, 0xE03, 0, [7, 0, 9]), (0xFFFF, 0xFFFF, 1, None)])
+    assert fonts.parse_cmap(cmap_table((0, 3, format4), (3, 1, format4))) == {
+        0x41: 0x45,
+        0x42: 0x46,
+        0xE01: 7,
+        0xE03: 9,
+    }
+
+
+def test_parse_cmap_prefers_the_format12_subtable():
+    format4 = cmap_format4([(0x41, 0x41, 1, None), (0xFFFF, 0xFFFF, 1, None)])
+    format12 = cmap_format12([(0x41, 0x41, 5), (0x1F600, 0x1F600, 6)])
+    assert fonts.parse_cmap(cmap_table((3, 1, format4), (3, 10, format12))) == {0x41: 5, 0x1F600: 6}
+
+
+def test_parse_cmap_rejects_tables_without_a_windows_unicode_subtable():
     format12 = cmap_format12([(0x41, 0x41, 1)])
-    with pytest.raises(ValueError, match="no format 12 Unicode cmap subtable"):
+    with pytest.raises(ValueError, match=re.escape("no (3, 10) format 12 or (3, 1) format 4 cmap subtable")):
         fonts.parse_cmap(cmap_table((0, 4, format12), (1, 0, struct.pack(">HHH", 0, 262, 0) + bytes(256))))
 
 
