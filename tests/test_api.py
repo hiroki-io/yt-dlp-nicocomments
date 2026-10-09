@@ -14,6 +14,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.api import (
     fetch_comments,
     fetch_past_threads,
     fetch_watch_data,
+    past_page_fetcher,
 )
 
 
@@ -149,10 +150,7 @@ def comment_data(thread_key="key"):
 
 def past_threads(ydl, min_comments, threads=(), warnings=None, messages=None):
     return fetch_past_threads(
-        ydl,
-        "sm9",
-        "ja",
-        comment_data(),
+        past_page_fetcher(ydl, "sm9", "ja", comment_data()),
         list(threads),
         min_comments,
         1000,

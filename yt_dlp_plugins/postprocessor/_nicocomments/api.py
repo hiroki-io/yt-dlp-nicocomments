@@ -115,10 +115,7 @@ def fetch_comments(
         threads = fetch_threads(ydl, comment)
         if min_comments != 0:
             threads = fetch_past_threads(
-                ydl,
-                video_id,
-                language,
-                comment,
+                past_page_fetcher(ydl, video_id, language, comment),
                 threads,
                 min_comments,
                 math.floor(fetched_at.timestamp()),
@@ -149,10 +146,7 @@ def fetch_threads(ydl, comment: dict, additionals: dict | None = None) -> list[d
 
 
 def fetch_past_threads(
-    ydl,
-    video_id: str,
-    language: str,
-    comment: dict,
+    fetch_page: Callable[[int], list[dict]],
     threads: list[dict],
     min_comments: int | None,
     when: int,
@@ -169,8 +163,7 @@ def fetch_past_threads(
             break
         time.sleep(PAST_PAGE_DELAY)
         try:
-            past_threads, comment = fetch_past_page(ydl, video_id, language, comment, when)
-            read_threads = [read_past_thread(thread, when) for thread in past_threads]
+            read_threads = [read_past_thread(thread, when) for thread in fetch_page(when)]
         except (PastCommentsError, CommentAPIError, RequestError) as e:
             report_warning(f"Stopped loading past comments: {e}")
             break
@@ -216,6 +209,15 @@ def all_comments_loaded(threads: dict[tuple[str, str], dict], seen: dict[tuple[s
         isinstance(count := thread.get("commentCount"), int) and len(seen[key]) >= count
         for key, thread in threads.items()
     )
+
+
+def past_page_fetcher(ydl, video_id: str, language: str, comment: dict) -> Callable[[int], list[dict]]:
+    def fetch_page(when: int) -> list[dict]:
+        nonlocal comment
+        past_threads, comment = fetch_past_page(ydl, video_id, language, comment, when)
+        return past_threads
+
+    return fetch_page
 
 
 def fetch_past_page(ydl, video_id: str, language: str, comment: dict, when: int) -> tuple[list[dict], dict]:
