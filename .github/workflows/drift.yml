@@ -6,11 +6,13 @@ on:
     paths:
       - tools/drift/**
       - yt_dlp_plugins/postprocessor/_nicocomments/api.py
+      - yt_dlp_plugins/postprocessor/_nicocomments/fetch.py
       - .github/workflows/drift.yml
   pull_request:
     paths:
       - tools/drift/**
       - yt_dlp_plugins/postprocessor/_nicocomments/api.py
+      - yt_dlp_plugins/postprocessor/_nicocomments/fetch.py
       - .github/workflows/drift.yml
   schedule:
     - cron: "17 3 * * 1"
