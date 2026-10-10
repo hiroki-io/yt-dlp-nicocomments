@@ -1,0 +1,1 @@
+- Add the `writejson` option to write the comments to a JSON file

@@ -47,3 +47,19 @@ player that can affect the plugin:
 
 When the official player changes, update the plugin and run
 `node tools/drift/player.mts update`.
+
+## Releases
+
+For each user-facing change, add a file named `release-notes/+<name>.md` that
+contains one list item, for example:
+
+```md
+- Add the `comments` option to load past comments
+```
+
+To make a release, run:
+
+```sh
+./release.sh VERSION
+git push --atomic origin main VERSION
+```
