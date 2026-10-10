@@ -1,22 +1,28 @@
 #!/bin/sh
 set -eu
 
-if [ $# -ne 1 ] || [ -z "$1" ]; then
-    echo "usage: $0 VERSION" >&2
+usage() {
+    echo "usage: $0 --major|--minor|--patch" >&2
     exit 2
-fi
-n='(0|[1-9][0-9]*)'
-# grep matches line by line, so reject newlines here.
-case "$1" in
-*[!0-9a-z.]*) echo "invalid version: $1" >&2 && exit 1 ;;
-esac
-if ! printf '%s\n' "$1" | grep -Eqx "$n(\.$n)*((a|b|rc)$n)?(\.post$n)?(\.dev$n)?"; then
-    echo "invalid version: $1" >&2
-    exit 1
-fi
+}
 
-version="$1"
+[ $# -eq 1 ] || usage
+case "$1" in
+--major | --minor | --patch) part="${1#--}" ;;
+*) usage ;;
+esac
+
 notes_dir="$(cd "$(dirname "$0")" && pwd)/release-notes"
+latest="$(git -C "$notes_dir" tag -l --sort=-v:refname | grep -Ex '(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){2}' | head -n 1 || true)"
+IFS=. read -r major minor patch <<END
+${latest:-0.0.0}
+END
+case "$part" in
+major) version="$((major + 1)).0.0" ;;
+minor) version="$major.$((minor + 1)).0" ;;
+patch) version="$major.$minor.$((patch + 1))" ;;
+esac
+
 if [ -n "$(git -C "$notes_dir" status --porcelain)" ]; then
     echo "the working tree is not clean" >&2
     exit 1

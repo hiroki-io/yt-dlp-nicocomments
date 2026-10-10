@@ -57,9 +57,11 @@ contains one list item, for example:
 - Add the `comments` option to load past comments
 ```
 
-To make a release, run:
+To make a release, run `release.sh` with `--major`, `--minor`, or `--patch`. It
+bumps that part of the latest `X.Y.Z` tag, then commits and tags the new
+version. Then push the commit and the tag:
 
 ```sh
-./release.sh VERSION
-git push --atomic origin main VERSION
+./release.sh --minor
+git push --atomic --follow-tags origin main
 ```
