@@ -6,7 +6,7 @@ from .font_files import FontKey
 
 VIEW_TIME_MS = 3000
 MAX_BODY_LENGTH = 10000
-MAX_AT_SECONDS = 10**9
+MAX_AT_SECONDS = 1e9
 Position = Literal["ue", "naka", "shita"]
 Size = Literal["big", "medium", "small"]
 CommandKind = Literal["position", "size", "color", "font"]

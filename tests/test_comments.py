@@ -106,6 +106,7 @@ def test_parse_clamps_at_commands_longer_than_the_limit():
     assert chat(commands=["@1000000000"]).at_seconds == 1e9
     assert chat(commands=["@1000000000.1"]).at_seconds == 1e9
     assert chat(commands=["@1" + "0" * 304]).at_seconds == 1e9
+    assert isinstance(chat(commands=["@1" + "0" * 304]).at_seconds, float)
     assert chat(commands=["@" + "9" * 400, "@5"]).at_seconds == 1e9
 
 
