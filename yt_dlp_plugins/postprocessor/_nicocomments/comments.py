@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass, field
-from typing import Literal, get_args
+from typing import Literal, cast, get_args
 
 from .font_files import FontKey
 
@@ -113,15 +113,15 @@ class Chat:
         position = size = color = font_key = at = None
         is_owner = fork == OWNER_FORK
         for command in commands:
-            lower = command.lower()
-            if lower in POSITIONS:
-                position = position or lower
-            elif lower in SIZES:
-                size = size or lower
-            elif lower in BASIC_COLORS or is_premium_color(command):
+            kind = command_kind(command, premium=True)
+            if kind == "position":
+                position = position or cast(Position, command.lower())
+            elif kind == "size":
+                size = size or cast(Size, command.lower())
+            elif kind == "color":
                 color = color or color_value(command)
-            elif lower in FONT_KEYS:
-                font_key = font_key or lower
+            elif kind == "font":
+                font_key = font_key or cast(FontKey, command.lower())
             elif is_owner and at is None and (m := DURATION_COMMAND.fullmatch(command)):
                 seconds = float(m[1])
                 if seconds > 0:
