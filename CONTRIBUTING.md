@@ -58,8 +58,8 @@ contains one list item, for example:
 ```
 
 To make a release, run `release.sh` with `--major`, `--minor`, or `--patch`. It
-bumps that part of the latest `X.Y.Z` tag, then commits and tags the new
-version. Then push the commit and the tag:
+bumps that part of the latest `X.Y.Z` tag, opens the release notes in the Git
+editor, then commits and tags the new version. Then push the commit and the tag:
 
 ```sh
 ./release.sh --minor

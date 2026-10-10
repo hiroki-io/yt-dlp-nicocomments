@@ -41,7 +41,19 @@ if [ ! -e "$1" ]; then
     echo "no unreleased items in $notes_dir" >&2
     exit 1
 fi
+trap 'rm -f -- "$output"' EXIT
+trap 'exit 1' INT TERM HUP
 awk 1 "$@" > "$output"
+editor="$(git -C "$notes_dir" var GIT_EDITOR)"
+if ! eval "$editor \"\$output\""; then
+    echo "the editor failed; the release was canceled" >&2
+    exit 1
+fi
+if ! grep -q '[^[:space:]]' "$output"; then
+    echo "the release notes are empty; the release was canceled" >&2
+    exit 1
+fi
+trap - EXIT INT TERM HUP
 rm -- "$@"
 echo "$output"
 git -C "$notes_dir" add -A -- .
