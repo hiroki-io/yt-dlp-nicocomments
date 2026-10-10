@@ -65,3 +65,10 @@ version. Then push the commit and the tag:
 ./release.sh --minor
 git push --atomic --follow-tags origin main
 ```
+
+To change the notes of a published release, edit `release-notes/X.Y.Z.md`,
+commit and push the change, and then update the GitHub release:
+
+```sh
+gh release edit X.Y.Z --notes-file release-notes/X.Y.Z.md
+```
