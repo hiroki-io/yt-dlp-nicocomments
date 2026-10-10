@@ -96,8 +96,23 @@ def test_watch_data_falls_back_to_the_guest_api_when_the_user_api_fails():
     assert "/api/watch/v3/sm9?" in ydl.requests[0].url
     assert "/api/watch/v3_guest/sm9?" in ydl.requests[1].url
     assert ydl.warnings == [
-        "Loading the watch API as a guest because the logged-in request failed: HTTP Error 400: Bad Request"
+        "Loading the watch API as a guest because the logged-in request failed "
+        "(failed to load the watch API: HTTP Error 400: Bad Request)"
     ]
+
+
+@pytest.mark.parametrize(
+    ("response", "reason"),
+    [
+        ({"meta": {"status": 400}}, "failed to load the watch API: status 400"),
+        (b"<html>", "unexpected response from the comment API: Expecting value: line 1 column 1 (char 0)"),
+    ],
+)
+def test_watch_data_falls_back_to_the_guest_api_on_an_unexpected_user_api_response(response, reason):
+    ydl = logged_in(FakeDownloader([response, watch_api()]))
+    assert "comment" in fetch_watch_data(ydl, "sm9")
+    assert "/api/watch/v3_guest/sm9?" in ydl.requests[1].url
+    assert ydl.warnings == [f"Loading the watch API as a guest because the logged-in request failed ({reason})"]
 
 
 def test_watch_data_is_requested_through_the_geo_verification_proxy():

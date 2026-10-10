@@ -76,18 +76,20 @@ def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
     headers = dict(API_HEADERS)
     if proxy := ydl.params.get("geo_verification_proxy"):
         headers["Ytdl-request-proxy"] = proxy
-    api = None
     if is_logged_in(ydl):
         try:
-            api = request_watch_api(ydl, "v3", video_id, language, headers)
-        except HTTPError as e:
+            return load_watch_data(ydl, "v3", video_id, language, headers)
+        except CommentAPIError as e:
             # A stale user_session cookie can make the v3 API fail even for videos open to guests.
-            ydl.report_warning(f"Loading the watch API as a guest because the logged-in request failed: {e}")
-    if api is None:
-        try:
-            api = request_watch_api(ydl, "v3_guest", video_id, language, headers)
-        except HTTPError as e:
-            raise CommentAPIError(f"failed to load the watch API: {e}") from e
+            ydl.report_warning(f"Loading the watch API as a guest because the logged-in request failed ({e})")
+    return load_watch_data(ydl, "v3_guest", video_id, language, headers)
+
+
+def load_watch_data(ydl, path: str, video_id: str, language: str, headers: dict) -> dict:
+    try:
+        api = request_watch_api(ydl, path, video_id, language, headers)
+    except HTTPError as e:
+        raise CommentAPIError(f"failed to load the watch API: {e}") from e
     meta = api.get("meta") if isinstance(api, dict) else None
     status = meta.get("status") if isinstance(meta, dict) else None
     if status != 200:
