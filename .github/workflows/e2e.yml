@@ -8,6 +8,7 @@ on:
       - tools/e2e.py
       - tools/font_data.py
       - hatch_build.py
+      - build-requirements.txt
       - pyproject.toml
       - uv.lock
       - .github/workflows/e2e.yml
@@ -17,6 +18,7 @@ on:
       - tools/e2e.py
       - tools/font_data.py
       - hatch_build.py
+      - build-requirements.txt
       - pyproject.toml
       - uv.lock
       - .github/workflows/e2e.yml
@@ -28,7 +30,7 @@ permissions: {}
 
 jobs:
   download:
-    name: Download on ${{ matrix.os }} / yt-dlp ${{ matrix.yt-dlp }}
+    name: Download on ${{ matrix.os }} / yt-dlp ${{ matrix.yt-dlp }} / ${{ matrix.install }}
     permissions:
       contents: read
     strategy:
@@ -36,13 +38,23 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         yt-dlp: [locked]
+        install: [wheel]
         include:
           - os: ubuntu-latest
             yt-dlp: stable
+            install: wheel
             uv-options: --upgrade-package yt-dlp
           - os: ubuntu-latest
             yt-dlp: nightly
+            install: wheel
             uv-options: --upgrade-package yt-dlp --prerelease allow
+          # The yt-dlp executable loads the wheel from a plugin directory and has no fontTools.
+          - os: ubuntu-latest
+            yt-dlp: locked
+            install: plugin-dir
+          - os: windows-latest
+            yt-dlp: locked
+            install: plugin-dir
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -77,13 +89,38 @@ jobs:
         with:
           path: yt_dlp_plugins/postprocessor/_nicocomments/font_data
           key: fonts-${{ hashFiles('yt_dlp_plugins/postprocessor/_nicocomments/font_files.py') }}
-      - name: Run yt-dlp with placeholder media
+      # Build the wheel from the sdist like the Release workflow, so that the job also tests the sdist.
+      - run: uv build --build-constraint build-requirements.txt --require-hashes
+      - name: Install yt-dlp and the wheel
+        if: matrix.install == 'wheel'
         env:
           UV_OPTIONS: ${{ matrix.uv-options || '--locked' }}
         run: |
           read -ra uv_options <<< "$UV_OPTIONS"
-          uv run "${uv_options[@]}" python -c "import yt_dlp.version as v; print(f'yt-dlp {v.__version__}')"
-          uv run "${uv_options[@]}" python tools/e2e.py --embed-subs --use-postprocessor "NicoComments:when=video" -o "video.%(ext)s" https://www.nicovideo.jp/watch/sm9
+          uv sync "${uv_options[@]}" --no-install-project
+          uv pip install dist/*.whl
+      - name: Install yt-dlp and put the wheel in a plugin directory
+        if: matrix.install == 'plugin-dir'
+        run: |
+          uv sync --locked --only-dev
+          if uv run --no-sync python -c "import fontTools" 2> /dev/null; then
+            echo "::error::fontTools is installed"
+            exit 1
+          fi
+          if uv run --no-sync which pyftsubset; then
+            echo "::error::pyftsubset is on PATH"
+            exit 1
+          fi
+          mkdir plugins
+          cp dist/*.whl plugins/
+          echo "PLUGIN_OPTIONS=--no-plugin-dirs --plugin-dirs plugins" >> "$GITHUB_ENV"
+      - name: Run yt-dlp with placeholder media
+        env:
+          E2E_INSTALLED_PLUGIN: "1"
+        run: |
+          read -ra plugin_options <<< "${PLUGIN_OPTIONS:-}"
+          uv run --no-sync python -c "import yt_dlp.version as v; print(f'yt-dlp {v.__version__}')"
+          uv run --no-sync python tools/e2e.py "${plugin_options[@]}" --embed-subs --use-postprocessor "NicoComments:when=video" -o "video.%(ext)s" https://www.nicovideo.jp/watch/sm9
       # FFprobe on Windows can end lines with CRLF.
       - name: Check the comment subtitle track
         run: |

@@ -3,12 +3,15 @@ import os
 import subprocess
 import sys
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 import yt_dlp
 from yt_dlp.downloader.common import FileDownloader
 
 DURATION = "5"
+SOURCE_DIRECTORY = Path(__file__).resolve().parent.parent / "yt_dlp_plugins"
+PLUGIN_MODULE = "yt_dlp_plugins.postprocessor.nicocomments"
 
 
 class PlaceholderFD(FileDownloader):
@@ -50,7 +53,21 @@ def forbid_real_downloads():
     FileDownloader.download = placeholder_only_download
 
 
+def check_installed_plugin():
+    module = sys.modules.get(PLUGIN_MODULE)
+    if module is None or module.__file__ is None:
+        raise AssertionError("yt-dlp did not load the plugin")
+    print(f"Loaded the plugin from {module.__file__}")
+    if Path(module.__file__).resolve().is_relative_to(SOURCE_DIRECTORY):
+        raise AssertionError("yt-dlp loaded the plugin from the source tree instead of the built wheel")
+
+
 if __name__ == "__main__":
     replace_downloader(importlib.import_module("yt_dlp.YoutubeDL"))
     forbid_real_downloads()
-    yt_dlp.main(sys.argv[1:])
+    try:
+        yt_dlp.main(sys.argv[1:])
+    except SystemExit as e:
+        if not e.code and os.environ.get("E2E_INSTALLED_PLUGIN") == "1":
+            check_installed_plugin()
+        raise
