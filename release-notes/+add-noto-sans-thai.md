@@ -1,1 +1,0 @@
-- Add Noto Sans Thai as the last fallback font
