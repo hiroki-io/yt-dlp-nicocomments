@@ -301,30 +301,30 @@ class Stage:
             staged.append(slot)
             result.append(slot)
 
-        def refresh(frame: float, earlier: list[tuple[Timing, Chat]]) -> None:
+        def refresh(frame: float, earlier_count: int) -> None:
             # The official player removes all comments of every layer and stages the visible ones again.
             nonlocal staged
             for slot in staged:
                 slot.hidden_ms = min(slot.hidden_ms, frame)
             staged = []
-            for timing, chat in earlier:
+            for timing, chat in timed_chats[:earlier_count]:
                 if next_frame_ms(max(0.0, timing.staging_ms)) <= frame < timing.hidden_ms:
                     stage(timing, chat, frame)
 
-        def refresh_until(frame: float, earlier: list[tuple[Timing, Chat]]) -> None:
+        def refresh_until(frame: float, earlier_count: int) -> None:
             nonlocal reversed_moving
             while refreshes and refreshes[0] <= frame:
                 refresh_frame = refreshes.pop(0)
                 reversed_moving = toggles.get(refresh_frame, reversed_moving)
-                refresh(refresh_frame, earlier)
+                refresh(refresh_frame, earlier_count)
 
         for i, (timing, chat) in enumerate(timed_chats):
             frame = next_frame_ms(max(0.0, timing.staging_ms))
-            refresh_until(frame, timed_chats[:i])
+            refresh_until(frame, i)
             if frame >= timing.hidden_ms:
                 continue
             stage(timing, chat, frame)
-        refresh_until(math.inf, timed_chats)
+        refresh_until(math.inf, len(timed_chats))
         return result
 
 
