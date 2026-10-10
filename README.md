@@ -145,6 +145,66 @@ yt-dlp --cookies-from-browser chrome --embed-subs \
   https://www.nicovideo.jp/watch/sm9
 ```
 
+### Smooth scrolling in mpv
+
+mpv redraws subtitles only when the video frame changes. To update them at the
+display refresh rate, load the mpv script
+[`nicocomments-display-fps.lua`](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/nicocomments-display-fps.lua).
+The script converts the video to the refresh rate of the display that shows the
+mpv window.
+
+The script adds an `fps` video filter. If mpv or IINA saves the playback
+position, it also saves this filter, and the filter stays in effect when you
+resume the video without the script.
+
+#### mpv
+
+Download the script and run mpv with it:
+
+```sh
+mpv --script=/path/to/nicocomments-display-fps.lua --video-sync=display-resample video.mkv
+```
+
+[`nicocomments-play.sh`](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/nicocomments-play.sh)
+runs the same command and passes its arguments to mpv. Put it in the same
+directory as `nicocomments-display-fps.lua`:
+
+```sh
+chmod +x nicocomments-play.sh
+./nicocomments-play.sh video.mkv
+```
+
+On Windows, use
+[`nicocomments-play.bat`](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/nicocomments-play.bat)
+in the same way:
+
+```bat
+nicocomments-play.bat video.mkv
+```
+
+To use the script for all videos, put it in the mpv scripts directory and add
+`video-sync=display-resample` to `mpv.conf`:
+
+| Platform     | mpv scripts directory    |
+| ------------ | ------------------------ |
+| macOS, Linux | `~/.config/mpv/scripts/` |
+| Windows      | `%APPDATA%\mpv\scripts\` |
+
+#### IINA
+
+[IINA](https://iina.io/) plays videos with mpv, so it can use the same script.
+Open **Settings > Advanced**, select **Enable advanced settings**, and add these
+entries to **Additional mpv options**:
+
+| Name         | Value                                           |
+| ------------ | ----------------------------------------------- |
+| `scripts`    | Absolute path to `nicocomments-display-fps.lua` |
+| `video-sync` | `display-resample`                              |
+
+If you already set up the mpv scripts directory and `mpv.conf`, you can instead
+select **Use config directory** and choose `~/.config/mpv`. Restart IINA after
+you change these settings.
+
 ### Burn the comments into the video
 
 To burn the comment track into the video, run this command with an FFmpeg build
