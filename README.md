@@ -3,6 +3,8 @@
 A [yt-dlp](https://github.com/yt-dlp/yt-dlp) postprocessor plugin that converts
 Niconico comments to an ASS subtitle track.
 
+![Sample comments in many colors, sizes, and scripts scrolling over a dark blue background](https://raw.githubusercontent.com/hiroki-io/yt-dlp-nicocomments/main/docs/sample.avif)
+
 ## Fonts
 
 The plugin lays out and draws comments with:

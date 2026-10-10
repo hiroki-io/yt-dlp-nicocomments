@@ -1,0 +1,390 @@
+{
+  "videoId": "sample",
+  "language": "ja",
+  "fetchedAt": "2026-10-11T00:00:00+00:00",
+  "comment": {
+    "nvComment": {
+      "server": "https://public.nvcomment.nicovideo.jp",
+      "params": {}
+    },
+    "layers": [
+      {
+        "index": 0,
+        "isTranslucent": false,
+        "threadIds": [
+          {
+            "id": 1,
+            "fork": 1,
+            "forkLabel": "owner"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "isTranslucent": false,
+        "threadIds": [
+          {
+            "id": 1,
+            "fork": 0,
+            "forkLabel": "main"
+          }
+        ]
+      }
+    ],
+    "threads": [
+      {
+        "id": 1,
+        "forkLabel": "owner"
+      },
+      {
+        "id": 1,
+        "forkLabel": "main"
+      }
+    ]
+  },
+  "threads": [
+    {
+      "id": 1,
+      "fork": "owner",
+      "comments": []
+    },
+    {
+      "id": 1,
+      "fork": "main",
+      "comments": [
+        {
+          "id": "1",
+          "no": 1,
+          "vposMs": 2500,
+          "body": "上コメント",
+          "commands": [
+            "ue",
+            "yellow"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "2",
+          "no": 2,
+          "vposMs": 3200,
+          "body": "下コメント",
+          "commands": [
+            "shita",
+            "cyan"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "3",
+          "no": 3,
+          "vposMs": 4600,
+          "body": "明朝体のコメント",
+          "commands": [
+            "ue",
+            "mincho",
+            "orange"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "4",
+          "no": 4,
+          "vposMs": 5400,
+          "body": "ゴシック体のコメント",
+          "commands": [
+            "shita",
+            "gothic",
+            "pink"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "5",
+          "no": 5,
+          "vposMs": 554,
+          "body": "うぽつ",
+          "commands": [],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "6",
+          "no": 6,
+          "vposMs": 815,
+          "body": "きたー",
+          "commands": [
+            "big",
+            "orange"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "7",
+          "no": 7,
+          "vposMs": 1095,
+          "body": "wwwwwww",
+          "commands": [
+            "yellow"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "8",
+          "no": 8,
+          "vposMs": 1263,
+          "body": "8888888888",
+          "commands": [
+            "big",
+            "orange"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "9",
+          "no": 9,
+          "vposMs": 1447,
+          "body": "すごい",
+          "commands": [
+            "yellow"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "10",
+          "no": 10,
+          "vposMs": 1825,
+          "body": "かわいい",
+          "commands": [
+            "big",
+            "orange"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "11",
+          "no": 11,
+          "vposMs": 1968,
+          "body": "ここ好き",
+          "commands": [
+            "red"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "12",
+          "no": 12,
+          "vposMs": 2281,
+          "body": "わこつ",
+          "commands": [
+            "big",
+            "purple"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "13",
+          "no": 13,
+          "vposMs": 2367,
+          "body": "Hello from the comment track",
+          "commands": [
+            "big"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "14",
+          "no": 14,
+          "vposMs": 2728,
+          "body": "nice",
+          "commands": [
+            "big",
+            "yellow"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "15",
+          "no": 15,
+          "vposMs": 2875,
+          "body": "你好",
+          "commands": [],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "16",
+          "no": 16,
+          "vposMs": 3185,
+          "body": "안녕하세요",
+          "commands": [
+            "small",
+            "orange"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "17",
+          "no": 17,
+          "vposMs": 3406,
+          "body": "สวัสดี",
+          "commands": [
+            "red"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "18",
+          "no": 18,
+          "vposMs": 3598,
+          "body": "🎉🎉🎉",
+          "commands": [
+            "small",
+            "red"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "19",
+          "no": 19,
+          "vposMs": 3857,
+          "body": "😺",
+          "commands": [],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "20",
+          "no": 20,
+          "vposMs": 4076,
+          "body": "∑∫√∞",
+          "commands": [],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "21",
+          "no": 21,
+          "vposMs": 4247,
+          "body": "★☆★☆★",
+          "commands": [
+            "green"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "22",
+          "no": 22,
+          "vposMs": 4460,
+          "body": "←↑→↓",
+          "commands": [
+            "purple"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "23",
+          "no": 23,
+          "vposMs": 4788,
+          "body": "うおおおおおおおおお",
+          "commands": [
+            "#ff6699"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "24",
+          "no": 24,
+          "vposMs": 4938,
+          "body": "ここすき",
+          "commands": [
+            "green"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "25",
+          "no": 25,
+          "vposMs": 5270,
+          "body": "初見です",
+          "commands": [
+            "#ff6699"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "26",
+          "no": 26,
+          "vposMs": 5450,
+          "body": "おお",
+          "commands": [],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "27",
+          "no": 27,
+          "vposMs": 5702,
+          "body": "たのしい",
+          "commands": [
+            "small",
+            "yellow"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "28",
+          "no": 28,
+          "vposMs": 5916,
+          "body": "きれい",
+          "commands": [],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "29",
+          "no": 29,
+          "vposMs": 6133,
+          "body": "すごすぎる",
+          "commands": [
+            "purple"
+          ],
+          "score": 0,
+          "isPremium": true
+        },
+        {
+          "id": "30",
+          "no": 30,
+          "vposMs": 6292,
+          "body": "草",
+          "commands": [
+            "#ff6699"
+          ],
+          "score": 0,
+          "isPremium": true
+        }
+      ]
+    }
+  ]
+}
