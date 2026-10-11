@@ -167,7 +167,7 @@ def build_ass(
     top_index = max((layer.index for layer in layers), default=0)
     events = []
     chars: dict[FontFile, set[str]] = {}
-    for layer in sorted(layers, key=lambda layer: -layer.index):
+    for layer in sorted(layers, key=lambda layer: layer.index, reverse=True):
         for slot in paint_order(layer.slots):
             slot_opacity = comment_opacity(slot.chat, layer.translucent) * opacity
             new_events, new_chars = slot_events(slot, viewport, video_scale, top_index - layer.index, slot_opacity)

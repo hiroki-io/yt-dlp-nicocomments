@@ -27,7 +27,8 @@ def assemble_comments(comment: dict, threads: list[dict]) -> VideoComments:
     thread_layers = {
         watch_thread_key(thread_id): layer["index"] for layer in comment["layers"] for thread_id in layer["threadIds"]
     }
-    owner_ngs = (comment.get("ng") or {}).get("owner") or []
+    ng = comment.get("ng") or {}
+    owner_ngs = ng.get("owner") or []
     for thread in threads:
         index = thread_layers.get(thread_key(thread))
         if index is None:
@@ -54,5 +55,5 @@ def assemble_comments(comment: dict, threads: list[dict]) -> VideoComments:
                 fork=thread["fork"],
             )
             layers[index].chats.append(chat)
-    ng_score_disabled = bool(((comment.get("ng") or {}).get("ngScore") or {}).get("isDisabled"))
+    ng_score_disabled = bool((ng.get("ngScore") or {}).get("isDisabled"))
     return VideoComments(list(layers.values()), ng_score_disabled)

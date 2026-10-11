@@ -68,11 +68,13 @@ def parse_boolean_option(name: str, value: str | int) -> bool:
 
 
 def parse_comments_option(value: str | int) -> int | None:
-    if isinstance(value, str) and value.strip().lower() == "all":
-        return None
-    if isinstance(value, str) and re.fullmatch(r"[0-9]+", value.strip()):
-        return int(value)
-    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+    if isinstance(value, str):
+        stripped = value.strip().lower()
+        if stripped == "all":
+            return None
+        if re.fullmatch(r"[0-9]+", stripped):
+            return int(stripped)
+    elif isinstance(value, int) and not isinstance(value, bool) and value >= 0:
         return value
     raise optparse.OptionValueError(
         f"NicoComments: comments must be a non-negative integer or all, not {format_option_value(value)}"
@@ -124,8 +126,8 @@ class NicoCommentsPP(PostProcessor):
         if not self.get_param("writesubtitles"):
             self.report_warning("Comments are not saved. Use --embed-subs or --write-subs")
             return [], info
-        subtitles = (info.get("requested_subtitles") or {}).values()
-        if "filepath" in info or any("filepath" in subtitle for subtitle in subtitles):
+        requested_subtitles = info.get("requested_subtitles") or {}
+        if "filepath" in info or any("filepath" in subtitle for subtitle in requested_subtitles.values()):
             # yt-dlp writes the subtitle files before the before_dl stage.
             self.report_warning(
                 "Comments are skipped because NicoComments ran after the subtitles were written. Use when=video"
@@ -180,8 +182,7 @@ class NicoCommentsPP(PostProcessor):
             if self._write_json:
                 json_subtitles[f"{key}-raw"] = {"ext": "json", "data": raw.to_json(info["id"], language)}
 
-        other_subtitles = dict(info.get("requested_subtitles") or {})
-        other_subtitles.pop(JSON_SUBTITLE_LANG, None)
+        other_subtitles = {lang: value for lang, value in requested_subtitles.items() if lang != JSON_SUBTITLE_LANG}
         info["requested_subtitles"] = {**comment_subtitles, **other_subtitles, **json_subtitles}
         if json_subtitles and self._insert_pp(NicoCommentJSONPP, after_embed=False):
             info.setdefault(JSON_SUBTITLES_KEY, []).extend(json_subtitles)

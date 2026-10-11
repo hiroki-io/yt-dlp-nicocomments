@@ -6,9 +6,7 @@ NG_SCORE_THRESHOLDS = {"high": -1000, "medium": -4800, "low": -10000, "none": No
 
 
 def is_hidden(chat: Chat, ng_score_threshold: int | None) -> bool:
-    if chat.invisible:
-        return True
-    return not chat.is_owner and ng_score_threshold is not None and chat.score <= ng_score_threshold
+    return chat.invisible or (not chat.is_owner and ng_score_threshold is not None and chat.score <= ng_score_threshold)
 
 
 def visible_chats(chats: list[Chat], ng_score_threshold: int | None) -> list[Chat]:

@@ -73,7 +73,7 @@ class Slot:
     character_size: float
     line_height: float
     text_width: float = field(init=False)
-    width: float = field(init=False)
+    width: int = field(init=False)
     height: float = field(init=False)
     start_ms: float = 0.0
     end_ms: float = 0.0
@@ -83,24 +83,25 @@ class Slot:
     shown_ms: float = 0.0
     hidden_ms: float = 0.0
     reversed: bool = False
-    _line_widths: dict = field(default_factory=dict, init=False, repr=False, compare=False)
+    _max_line_widths: dict[int, float] = field(default_factory=dict, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         self.set_size(self.character_size, self.line_height)
 
-    def measure(self, character_size: float, line_height: float) -> tuple[float, float, float]:
+    def text_width_at(self, character_size: float) -> float:
         px, shrink = font_px(character_size)
-        if px not in self._line_widths:
-            self._line_widths[px] = [self.font_chain.text_width(line, px) for line in self.chat.lines]
-        widths = self._line_widths[px]
-        width = max(math.ceil(w * shrink) for w in widths)
-        count = len(self.chat.lines)
-        height = line_height * (count - 1) + character_size if count > 1 else character_size
-        return width, height, max(widths) * shrink
+        if px not in self._max_line_widths:
+            self._max_line_widths[px] = max(self.font_chain.text_width(line, px) for line in self.chat.lines)
+        return self._max_line_widths[px] * shrink
+
+    def box_width(self, character_size: float) -> int:
+        return math.ceil(self.text_width_at(character_size))
 
     def set_size(self, character_size: float, line_height: float) -> None:
         self.character_size, self.line_height = character_size, line_height
-        self.width, self.height, self.text_width = self.measure(character_size, line_height)
+        self.text_width = self.text_width_at(character_size)
+        self.width = math.ceil(self.text_width)
+        self.height = line_height * (len(self.chat.lines) - 1) + character_size
 
     @property
     def em(self) -> float:
@@ -158,16 +159,11 @@ def resized_line_height(size: Size) -> float:
     return (STAGE_HEIGHT - LINE_COUNT_FOR_LINE_HEIGHT[size] / resized * default_character_size(size)) / (resized - 1)
 
 
+@dataclass(eq=False)
 class Stage:
-    def __init__(
-        self,
-        content_length_ms: float | None,
-        font_chains: dict[FontKey, FontChain],
-        rng: random.Random,
-    ):
-        self.content_length_ms = content_length_ms
-        self.font_chains = font_chains
-        self.rng = rng
+    content_length_ms: float | None
+    font_chains: dict[FontKey, FontChain]
+    rng: random.Random
 
     def make_slot(self, chat: Chat, timing: Timing) -> Slot:
         slot = Slot(
@@ -198,27 +194,27 @@ class Stage:
             character_size = slot.character_size * (line_height / slot.line_height)
         else:
             character_size, line_height = slot.character_size, slot.line_height
-        width, _, _ = slot.measure(character_size, line_height)
+        width = slot.box_width(character_size)
         fit_to_width = width > limit and chat.is_fixed
 
         if fit_to_width:
             before_fit = character_size
             ratio = limit / width
             character_size, line_height = character_size * ratio, line_height * ratio
-            width, _, _ = slot.measure(character_size, line_height)
+            width = slot.box_width(character_size)
             if width > limit:
                 while width >= limit and character_size > 1:
                     new_character_size = character_size - 1
                     line_height *= new_character_size / character_size
                     character_size = new_character_size
-                    width, _, _ = slot.measure(character_size, line_height)
+                    width = slot.box_width(character_size)
             else:
                 while True:
                     previous = (character_size, line_height)
                     new_character_size = character_size + 1
                     line_height *= new_character_size / character_size
                     character_size = new_character_size
-                    width, _, _ = slot.measure(character_size, line_height)
+                    width = slot.box_width(character_size)
                     if width >= limit:
                         break
                 character_size, line_height = previous

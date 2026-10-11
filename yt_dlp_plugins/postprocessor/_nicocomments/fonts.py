@@ -12,7 +12,6 @@ import tempfile
 import unicodedata
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -276,7 +275,7 @@ def subset_font_with_command(command: str, data: bytes, chars: Iterable[str]) ->
         raise FontError(f"cannot run pyftsubset: {e}") from e
 
 
-@cache
+@functools.cache
 def load_font_chains() -> dict[FontKey, FontChain]:
     faces = {}
     for font, data in read_bundled_fonts(FONT_FILES, font_data_directory()).items():

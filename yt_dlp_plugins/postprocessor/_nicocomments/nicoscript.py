@@ -151,12 +151,7 @@ class Nicoscripts:
                 source, destination, mode, target, matching = args[:5]
                 if not source:
                     continue
-                if target in TARGETS:
-                    targets = TARGETS[target]
-                elif target == "含む":
-                    targets = TARGETS["全"]
-                else:
-                    targets = TARGETS["コメ"]
+                targets = TARGETS["全"] if target == "含む" else TARGETS.get(target, TARGETS["コメ"])
                 start, end = time_range(raw, DEFAULT_DURATION_MS)
                 scripts.replacements.append(
                     Replacement(
@@ -190,10 +185,8 @@ class Nicoscripts:
         for replacement in self.replacements:
             if is_owner not in replacement.targets or not replacement.start_ms <= vpos_ms < replacement.end_ms:
                 continue
-            if replacement.exact:
-                if body != replacement.source:
-                    continue
-            elif replacement.source not in body:
+            matched = body == replacement.source if replacement.exact else replacement.source in body
+            if not matched:
                 continue
             if replacement.replace_all:
                 body = replacement.destination
