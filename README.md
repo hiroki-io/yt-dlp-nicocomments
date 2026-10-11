@@ -198,7 +198,7 @@ To use the script for all videos, put it in the mpv scripts directory and add
 Open **Settings > Advanced**, select **Enable advanced settings**, and add these
 entries to **Additional mpv options**:
 
-| Name         | Value                                           |
+| Key          | Value                                           |
 | ------------ | ----------------------------------------------- |
 | `scripts`    | Absolute path to `nicocomments-display-fps.lua` |
 | `video-sync` | `display-resample`                              |
