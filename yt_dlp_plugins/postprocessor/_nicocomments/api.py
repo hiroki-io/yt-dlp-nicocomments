@@ -20,10 +20,6 @@ WATCH_API_LANGUAGES = {"ja": "ja-jp", "en": "en-us", "zh": "zh-tw"}
 PAST_PAGE_DELAY = 1
 
 
-class PastCommentsError(Exception):
-    pass
-
-
 @dataclass
 class RawComments:
     comment: dict
@@ -181,7 +177,7 @@ def fetch_past_threads(
         time.sleep(PAST_PAGE_DELAY)
         try:
             read_threads = [read_past_thread(thread, when) for thread in fetch_page(when)]
-        except (PastCommentsError, CommentAPIError, RequestError) as e:
+        except (CommentAPIError, RequestError) as e:
             report_warning(f"Stopped loading past comments: {e}")
             break
         page += 1
@@ -263,7 +259,7 @@ def check_past_page_error(error: HTTPError) -> None:
         raise error
     # A renewed thread key cannot fix INVALID_TOKEN, which a guest thread key gets.
     if api_error_code(error) == "INVALID_TOKEN":
-        raise PastCommentsError(
+        raise CommentAPIError(
             "the comment API needs a login for past comments. Use --cookies-from-browser or --cookies"
         ) from error
 
