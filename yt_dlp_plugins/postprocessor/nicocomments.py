@@ -183,9 +183,11 @@ class NicoCommentsPP(PostProcessor):
         other_subtitles = dict(info.get("requested_subtitles") or {})
         other_subtitles.pop(JSON_SUBTITLE_LANG, None)
         info["requested_subtitles"] = {**comment_subtitles, **other_subtitles, **json_subtitles}
-        if json_subtitles and self._insert_json_pp():
+        if json_subtitles and self._insert_pp(NicoCommentJSONPP, after_embed=False):
             info.setdefault(JSON_SUBTITLES_KEY, []).extend(json_subtitles)
-        if self._insert_fonts_pp():
+        # The later postprocessors copy all streams, so FFmpegSplitChapters also copies the fonts
+        # to each chapter file. add_post_processor can only append to the end.
+        if self._insert_pp(NicoCommentFontsPP, after_embed=True):
             info.setdefault(EMBEDDING_KEY, []).append(
                 CommentEmbedding(
                     frozenset(subtitle["name"] for subtitle in comment_subtitles.values()),
@@ -207,24 +209,13 @@ class NicoCommentsPP(PostProcessor):
         pps = self._post_processors()
         return max((i for i, pp in enumerate(pps) if isinstance(pp, FFmpegEmbedSubtitlePP)), default=None)
 
-    def _insert_json_pp(self) -> bool:
+    def _insert_pp(self, pp_class: type[NicoCommentJSONPP | NicoCommentFontsPP], *, after_embed: bool) -> bool:
         embed_index = self._embed_subtitle_index()
         if embed_index is None:
             return False
         pps = self._post_processors()
-        if not any(isinstance(pp, NicoCommentJSONPP) for pp in pps):
-            pps.insert(embed_index, NicoCommentJSONPP(self._downloader))
-        return True
-
-    def _insert_fonts_pp(self) -> bool:
-        embed_index = self._embed_subtitle_index()
-        if embed_index is None:
-            return False
-        pps = self._post_processors()
-        if not any(isinstance(pp, NicoCommentFontsPP) for pp in pps):
-            # The later postprocessors copy all streams, so FFmpegSplitChapters also copies the fonts
-            # to each chapter file. add_post_processor can only append to the end.
-            pps.insert(embed_index + 1, NicoCommentFontsPP(self._downloader))
+        if not any(isinstance(pp, pp_class) for pp in pps):
+            pps.insert(embed_index + 1 if after_embed else embed_index, pp_class(self._downloader))
         return True
 
     def _content_length_ms(self, info) -> int | None:
