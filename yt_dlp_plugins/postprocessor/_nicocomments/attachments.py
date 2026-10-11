@@ -118,7 +118,8 @@ class NicoCommentFontsPP(FFmpegPostProcessor):
             )
             opts += [
                 "-attach",
-                FFmpegPostProcessor._ffmpeg_filename_argument(path.as_posix()),
+                # Without the protocol, FFmpeg reads a colon in the path as a protocol separator.
+                f"file:{path.as_posix()}",
                 f"-metadata:s:t:m:filename:{font.filename}",
                 f"mimetype={font.mimetype}",
             ]
