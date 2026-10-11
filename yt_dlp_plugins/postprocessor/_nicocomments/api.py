@@ -58,9 +58,11 @@ def without(data: dict, *keys: str) -> dict:
     return {key: value for key, value in data.items() if key not in keys}
 
 
-def fetch_json(ydl, url: str, data: dict | None = None, headers: dict | None = None) -> Any:
+def fetch_json(
+    ydl, url: str, data: dict | None = None, headers: dict | None = None, proxies: dict | None = None
+) -> Any:
     body = json.dumps(data).encode() if data is not None else None
-    response = fetch_bytes(ydl, url, body, headers)
+    response = fetch_bytes(ydl, url, body, headers, proxies)
     try:
         return json.loads(response)
     except ValueError as e:
@@ -73,21 +75,20 @@ def is_logged_in(ydl) -> bool:
 
 
 def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
-    headers = dict(API_HEADERS)
-    if proxy := ydl.params.get("geo_verification_proxy"):
-        headers["Ytdl-request-proxy"] = proxy
+    proxy = ydl.params.get("geo_verification_proxy")
+    proxies = {"all": proxy} if proxy else None
     if is_logged_in(ydl):
         try:
-            return load_watch_data(ydl, "v3", video_id, language, headers)
+            return load_watch_data(ydl, "v3", video_id, language, proxies)
         except CommentAPIError as e:
             # A stale user_session cookie can make the v3 API fail even for videos open to guests.
             ydl.report_warning(f"Loading the watch API as a guest because the logged-in request failed ({e})")
-    return load_watch_data(ydl, "v3_guest", video_id, language, headers)
+    return load_watch_data(ydl, "v3_guest", video_id, language, proxies)
 
 
-def load_watch_data(ydl, path: str, video_id: str, language: str, headers: dict) -> dict:
+def load_watch_data(ydl, path: str, video_id: str, language: str, proxies: dict | None) -> dict:
     try:
-        api = request_watch_api(ydl, path, video_id, language, headers)
+        api = request_watch_api(ydl, path, video_id, language, proxies)
     except HTTPError as e:
         raise CommentAPIError(f"failed to load the watch API: {e}") from e
     meta = api.get("meta") if isinstance(api, dict) else None
@@ -102,13 +103,13 @@ def fetch_comment_data(ydl, video_id: str, language: str) -> dict:
     return check_comment_data(fetch_watch_data(ydl, video_id, language).get("comment"))
 
 
-def request_watch_api(ydl, path: str, video_id: str, language: str, headers: dict) -> dict:
+def request_watch_api(ydl, path: str, video_id: str, language: str, proxies: dict | None) -> dict:
     track_id = f"AAAAAAAAAA_{round(time.time() * 1000)}"
     url = update_url_query(
         f"https://www.nicovideo.jp/api/watch/{path}/{video_id}",
         {"actionTrackId": track_id, "i18nLanguage": WATCH_API_LANGUAGES[language]},
     )
-    return fetch_json(ydl, url, headers=headers)
+    return fetch_json(ydl, url, headers=API_HEADERS, proxies=proxies)
 
 
 def fetch_comments(
