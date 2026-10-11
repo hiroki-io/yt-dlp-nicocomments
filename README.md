@@ -217,3 +217,8 @@ ffmpeg -i video.mkv -vf subtitles=video.mkv -c:a copy video-burned.mp4
 ```
 
 FFmpeg encodes the video again, so this takes time and lowers the quality.
+
+## Trademarks
+
+Niconico is a trademark or registered trademark of DWANGO Co., Ltd. This project
+is not affiliated with or endorsed by DWANGO Co., Ltd.
