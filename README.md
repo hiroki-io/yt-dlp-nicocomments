@@ -5,32 +5,6 @@ Niconico comments to an ASS subtitle track.
 
 ![Sample comments in many colors, sizes, and scripts scrolling over a dark blue background](https://raw.githubusercontent.com/hiroki-io/yt-dlp-nicocomments/main/docs/sample.avif)
 
-## Fonts
-
-The plugin lays out and draws comments with:
-
-- Noto Sans JP
-  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf)
-  and
-  [Bold](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/JP/NotoSansJP-Bold.otf))
-- Noto Serif JP
-  ([Regular](https://github.com/notofonts/noto-cjk/raw/Serif2.003/Serif/SubsetOTF/JP/NotoSerifJP-Regular.otf))
-- [Noto Emoji](https://raw.githubusercontent.com/google/fonts/b979dba422e445492b0eb9951ac52ee0b4d648c3/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf)
-- [Noto Sans Math](https://raw.githubusercontent.com/google/fonts/dbd1ab6e65dc59bcda3ca8de9fd372f58f98e0af/ofl/notosansmath/NotoSansMath-Regular.ttf)
-- [Noto Sans Symbols 2](https://raw.githubusercontent.com/google/fonts/7b6724ac7ececc713e9ba93af309f7520c9a80a3/ofl/notosanssymbols2/NotoSansSymbols2-Regular.ttf)
-- Noto Sans SC
-  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf))
-- Noto Sans KR
-  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf))
-- [Noto Sans Thai](https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/notosansthai/NotoSansThai%5Bwdth%2Cwght%5D.ttf)
-
-The package includes these fonts under the SIL Open Font License 1.1. With
-`--embed-subs`, the plugin saves the video as an MKV file and attaches the fonts
-to it (unless `embedfonts=false`).
-
-To keep the video file small, the plugin removes the unused glyphs from the
-fonts using [fontTools](https://github.com/fonttools/fonttools).
-
 ## Install
 
 If yt-dlp is installed with uv or pip, install the plugin in the same
@@ -60,8 +34,9 @@ gh attestation verify yt_dlp_nicocomments-*.whl -R hiroki-io/yt-dlp-nicocomments
 ```
 
 The yt-dlp executable cannot load fontTools from the plugin directory. To attach
-smaller fonts, install fontTools so that the `pyftsubset` command is on `PATH`,
-for example with `brew install fonttools` or `pipx install fonttools`.
+smaller fonts (see [Fonts](#fonts)), install fontTools so that the `pyftsubset`
+command is on `PATH`, for example with `brew install fonttools` or
+`pipx install fonttools`.
 
 To use the code from a clone of this repository, download the fonts and put the
 repository in a plugin directory:
@@ -217,6 +192,32 @@ ffmpeg -i video.mkv -vf subtitles=video.mkv -c:a copy video-burned.mp4
 ```
 
 FFmpeg encodes the video again, so this takes time and lowers the quality.
+
+## Fonts
+
+The plugin lays out and draws comments with:
+
+- Noto Sans JP
+  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf)
+  and
+  [Bold](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/JP/NotoSansJP-Bold.otf))
+- Noto Serif JP
+  ([Regular](https://github.com/notofonts/noto-cjk/raw/Serif2.003/Serif/SubsetOTF/JP/NotoSerifJP-Regular.otf))
+- [Noto Emoji](https://raw.githubusercontent.com/google/fonts/b979dba422e445492b0eb9951ac52ee0b4d648c3/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf)
+- [Noto Sans Math](https://raw.githubusercontent.com/google/fonts/dbd1ab6e65dc59bcda3ca8de9fd372f58f98e0af/ofl/notosansmath/NotoSansMath-Regular.ttf)
+- [Noto Sans Symbols 2](https://raw.githubusercontent.com/google/fonts/7b6724ac7ececc713e9ba93af309f7520c9a80a3/ofl/notosanssymbols2/NotoSansSymbols2-Regular.ttf)
+- Noto Sans SC
+  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf))
+- Noto Sans KR
+  ([Regular](https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf))
+- [Noto Sans Thai](https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/notosansthai/NotoSansThai%5Bwdth%2Cwght%5D.ttf)
+
+The package includes these fonts under the SIL Open Font License 1.1. With
+`--embed-subs`, the plugin saves the video as an MKV file and attaches the fonts
+to it (unless `embedfonts=false`).
+
+To keep the video file small, the plugin removes the unused glyphs from the
+fonts using [fontTools](https://github.com/fonttools/fonttools).
 
 ## Trademarks
 
