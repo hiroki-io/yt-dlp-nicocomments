@@ -1,6 +1,7 @@
 import os
 import sys
 import tempfile
+import weakref
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +23,8 @@ if TYPE_CHECKING:
 EMBEDDING_KEY = "__nicocomments_embedding"
 JSON_SUBTITLES_KEY = "__nicocomments_json_subtitles"
 ASS_CONTAINER = "mkv"
+# Several NicoComments postprocessors can share a downloader, which needs the postprocessors below only once.
+attached_downloaders: weakref.WeakSet = weakref.WeakSet()
 
 
 @dataclass
@@ -29,6 +32,23 @@ class CommentEmbedding:
     track_names: frozenset[str]
     fonts: dict[FontFile, frozenset[str]]
     default: bool
+
+
+def attach_postprocessors(ydl) -> None:
+    if ydl in attached_downloaders:
+        return
+    attached_downloaders.add(ydl)
+    # yt-dlp writes the subtitle files before the before_dl stage.
+    ydl.add_post_processor(NicoCommentJSONPP(ydl), when="before_dl")
+    fonts_pp = NicoCommentFontsPP(ydl)
+
+    def run_after_embedding(status: dict) -> None:
+        # The hook runs before the later postprocessors, which copy all streams, so FFmpegSplitChapters
+        # also copies the fonts to each chapter file.
+        if status["status"] == "finished" and status["postprocessor"] == "EmbedSubtitle":
+            fonts_pp.run(status["info_dict"])
+
+    ydl.add_postprocessor_hook(run_after_embedding)
 
 
 class NicoCommentJSONPP(PostProcessor):
@@ -43,7 +63,7 @@ class NicoCommentJSONPP(PostProcessor):
 
 class NicoCommentFontsPP(FFmpegPostProcessor):
     def run(self, info):  # pyright: ignore[reportIncompatibleMethodOverride]
-        embeddings: list[CommentEmbedding] = info.pop(EMBEDDING_KEY, [])
+        embeddings: list[CommentEmbedding] = info.get(EMBEDDING_KEY, [])
         path = info.get("filepath")
         if not path or not os.path.exists(path):
             return [], info

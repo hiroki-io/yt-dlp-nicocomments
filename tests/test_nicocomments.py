@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 import pytest
 from conftest import FakeDownloader, logged_in
 from yt_dlp.networking.exceptions import TransportError
-from yt_dlp.postprocessor.ffmpeg import FFmpegEmbedSubtitlePP, FFmpegSplitChaptersPP
 
 from yt_dlp_plugins.postprocessor import nicocomments
 from yt_dlp_plugins.postprocessor._nicocomments import font_files, fonts
@@ -13,7 +12,6 @@ from yt_dlp_plugins.postprocessor._nicocomments.api import RawComments
 from yt_dlp_plugins.postprocessor._nicocomments.attachments import (
     EMBEDDING_KEY,
     JSON_SUBTITLES_KEY,
-    NicoCommentFontsPP,
     NicoCommentJSONPP,
 )
 from yt_dlp_plugins.postprocessor._nicocomments.comments import CommentLayer, VideoComments
@@ -36,10 +34,8 @@ def video_info(**fields):
 
 
 def downloader(embed_subtitles=True, **params):
-    ydl = FakeDownloader(params={"writesubtitles": True, **params})
-    if embed_subtitles:
-        ydl.add_post_processor(FFmpegEmbedSubtitlePP(ydl))
-    return ydl
+    postprocessors = [{"key": "FFmpegEmbedSubtitle"}] if embed_subtitles else []
+    return FakeDownloader(params={"writesubtitles": True, "postprocessors": postprocessors, **params})
 
 
 @pytest.fixture
@@ -198,25 +194,23 @@ def test_writejson_adds_the_raw_comments_as_the_last_subtitles(fake_fonts_and_co
     assert (saved["videoId"], saved["language"]) == ("sm9", "en")
 
 
-def test_json_postprocessor_is_inserted_before_the_embedding(fake_fonts_and_comments, used_fonts):
+def test_postprocessors_are_attached_once_per_downloader(fake_fonts_and_comments, used_fonts):
     ydl = downloader()
     info = video_info()
     NicoCommentsPP(ydl, lang="ja", writejson="true").run(info)
     NicoCommentsPP(ydl, lang="en", writejson="true").run(info)
     assert info[JSON_SUBTITLES_KEY] == ["ja-comments-raw", "en-comments-raw"]
-    json_pp, embed_pp, fonts_pp = ydl._pps["post_process"]
+    [json_pp] = ydl.postprocessors["before_dl"]
     assert isinstance(json_pp, NicoCommentJSONPP)
-    assert isinstance(embed_pp, FFmpegEmbedSubtitlePP)
-    assert isinstance(fonts_pp, NicoCommentFontsPP)
+    assert len(ydl.postprocessor_hooks) == 1
 
 
 @pytest.mark.parametrize(("embed_subtitles", "writejson"), [(False, "true"), (True, "false")])
-def test_json_postprocessor_is_added_only_for_embedded_raw_json(fake_fonts_and_comments, embed_subtitles, writejson):
+def test_raw_json_is_removed_only_when_embedded(fake_fonts_and_comments, embed_subtitles, writejson):
     ydl = downloader(embed_subtitles=embed_subtitles)
     info = video_info()
     NicoCommentsPP(ydl, writejson=writejson).run(info)
     assert JSON_SUBTITLES_KEY not in info
-    assert not any(isinstance(pp, NicoCommentJSONPP) for pp in ydl._pps["post_process"])
 
 
 def test_comments_are_added_as_the_first_subtitle_track(fake_fonts_and_comments):
@@ -332,12 +326,10 @@ def test_fonts_are_not_saved_with_the_embedfonts_option_off(fake_fonts_and_comme
     assert embedding.default
 
 
-def test_fonts_postprocessor_is_added_once_after_the_embedding(fake_fonts_and_comments, used_fonts):
+def test_each_postprocessor_saves_its_comment_tracks(fake_fonts_and_comments, used_fonts):
     ydl = downloader()
-    split_pp = FFmpegSplitChaptersPP(ydl)
-    ydl.add_post_processor(split_pp)
     NicoCommentsPP(ydl).run({"extractor_key": "Youtube"})
-    assert len(ydl._pps["post_process"]) == 2
+    assert ydl.postprocessor_hooks == []
     info = video_info()
     NicoCommentsPP(ydl, lang="ja").run(info)
     NicoCommentsPP(ydl, lang="en", defaulttrack="false").run(info)
@@ -345,19 +337,6 @@ def test_fonts_postprocessor_is_added_once_after_the_embedding(fake_fonts_and_co
         ({"Japanese comments"}, True),
         ({"English comments"}, False),
     ]
-    embed_pp, fonts_pp, last_pp = ydl._pps["post_process"]
-    assert isinstance(embed_pp, FFmpegEmbedSubtitlePP)
-    assert isinstance(fonts_pp, NicoCommentFontsPP)
-    assert last_pp is split_pp
-
-
-def test_fonts_postprocessor_is_not_added_without_embedding_the_subtitles(fake_fonts_and_comments, used_fonts):
-    ydl = downloader(embed_subtitles=False)
-    info = video_info()
-    NicoCommentsPP(ydl).run(info)
-    assert "ja-comments" in info["requested_subtitles"]
-    assert EMBEDDING_KEY not in info
-    assert ydl._pps["post_process"] == []
 
 
 @pytest.mark.parametrize(
@@ -376,4 +355,4 @@ def test_comments_are_skipped_after_the_subtitles_are_written(fake_fonts_and_com
     ]
     assert fake_fonts_and_comments == []
     assert info.get("requested_subtitles") == fields.get("requested_subtitles")
-    assert len(ydl._pps["post_process"]) == 1
+    assert ydl.postprocessor_hooks == []

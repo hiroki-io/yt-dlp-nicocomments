@@ -68,7 +68,8 @@ class FakeDownloader:
         self.requests = []
         self.warnings = []
         self.messages = []
-        self._pps: dict[str, list] = {"post_process": []}
+        self.postprocessors: dict[str, list] = {}
+        self.postprocessor_hooks = []
 
     def urlopen(self, request):
         self.requests.append(request)
@@ -92,7 +93,10 @@ class FakeDownloader:
         self.warnings.append(text)
 
     def add_post_processor(self, pp, when="post_process"):
-        self._pps.setdefault(when, []).append(pp)
+        self.postprocessors.setdefault(when, []).append(pp)
+
+    def add_postprocessor_hook(self, hook):
+        self.postprocessor_hooks.append(hook)
 
 
 def logged_in(ydl):

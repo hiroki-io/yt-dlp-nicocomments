@@ -6,6 +6,7 @@ import zipfile
 
 import pytest
 import yt_dlp
+from yt_dlp.postprocessor.common import PostProcessor
 from yt_dlp.postprocessor.ffmpeg import FFmpegEmbedSubtitlePP, FFmpegPostProcessorError
 
 from yt_dlp_plugins.postprocessor._nicocomments import attachments, font_files, fonts
@@ -15,6 +16,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.attachments import (
     CommentEmbedding,
     NicoCommentFontsPP,
     NicoCommentJSONPP,
+    attach_postprocessors,
 )
 
 ASS = """[Script Info]
@@ -118,6 +120,24 @@ def default_dispositions(info):
     return [stream["disposition"]["default"] for stream in streams(info, "subtitle")]
 
 
+def test_fonts_postprocessor_runs_once_right_after_the_embedding(ydl, monkeypatch):
+    calls = []
+
+    class NextPP(PostProcessor):
+        def run(self, info):  # pyright: ignore[reportIncompatibleMethodOverride]
+            calls.append("next")
+            return [], info
+
+    monkeypatch.setattr(NicoCommentFontsPP, "run", lambda self, info: calls.append(info[EMBEDDING_KEY]))
+    ydl.add_post_processor(FFmpegEmbedSubtitlePP(ydl))
+    ydl.add_post_processor(NextPP(ydl))
+    attach_postprocessors(ydl)
+    attach_postprocessors(ydl)
+    embeddings = [CommentEmbedding(frozenset({"Japanese comments"}), {}, True)]
+    ydl.run_all_pps("post_process", {"ext": "mkv", "filepath": "video.mkv", EMBEDDING_KEY: embeddings})
+    assert calls == [embeddings, "next"]
+
+
 def test_json_postprocessor_removes_only_the_raw_json_of_the_plugin(ydl):
     info = {
         "requested_subtitles": {
@@ -175,7 +195,6 @@ def test_fonts_are_attached_to_mkv_and_the_comment_track_becomes_default(ydl, tm
         ("NotoSansJP-Bold.otf", "application/vnd.ms-opentype"),
     ]
     assert default_dispositions(info) == [1, 0]
-    assert EMBEDDING_KEY not in info
 
 
 @requires_ffmpeg

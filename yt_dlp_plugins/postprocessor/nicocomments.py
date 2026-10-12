@@ -3,10 +3,9 @@ import math
 import optparse
 import re
 from collections.abc import Collection
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from yt_dlp.postprocessor.common import PostProcessor
-from yt_dlp.postprocessor.ffmpeg import FFmpegEmbedSubtitlePP
 from yt_dlp.utils import PostProcessingError
 
 from ._nicocomments.api import WATCH_API_LANGUAGES, CommentAPIError, fetch_comments, is_logged_in
@@ -16,8 +15,7 @@ from ._nicocomments.attachments import (
     EMBEDDING_KEY,
     JSON_SUBTITLES_KEY,
     CommentEmbedding,
-    NicoCommentFontsPP,
-    NicoCommentJSONPP,
+    attach_postprocessors,
 )
 from ._nicocomments.filters import NG_SCORE_THRESHOLDS
 from ._nicocomments.font_files import FontFile, add_font_chars
@@ -184,40 +182,24 @@ class NicoCommentsPP(PostProcessor):
 
         other_subtitles = {lang: value for lang, value in requested_subtitles.items() if lang != JSON_SUBTITLE_LANG}
         info["requested_subtitles"] = {**comment_subtitles, **other_subtitles, **json_subtitles}
-        if json_subtitles and self._insert_pp(NicoCommentJSONPP, after_embed=False):
+        if json_subtitles and self._embeds_subtitles():
             info.setdefault(JSON_SUBTITLES_KEY, []).extend(json_subtitles)
-        # The later postprocessors copy all streams, so FFmpegSplitChapters also copies the fonts
-        # to each chapter file. add_post_processor can only append to the end.
-        if self._insert_pp(NicoCommentFontsPP, after_embed=True):
-            info.setdefault(EMBEDDING_KEY, []).append(
-                CommentEmbedding(
-                    frozenset(subtitle["name"] for subtitle in comment_subtitles.values()),
-                    {font: frozenset(chars) for font, chars in font_chars.items()} if self._embed_fonts else {},
-                    self._default_track,
-                )
+        info.setdefault(EMBEDDING_KEY, []).append(
+            CommentEmbedding(
+                frozenset(subtitle["name"] for subtitle in comment_subtitles.values()),
+                {font: frozenset(chars) for font, chars in font_chars.items()} if self._embed_fonts else {},
+                self._default_track,
             )
+        )
+        attach_postprocessors(self._downloader)
         return [], info
 
     def _report_progress(self, language: str, text: str) -> None:
         self.to_screen(f"{LANGUAGE_NAMES[language]}: {text}")  # pyright: ignore[reportCallIssue]
 
-    def _post_processors(self) -> list[Any]:
-        # API users can add the postprocessor without listing it in the postprocessors param,
-        # and yt-dlp has no public API for the added postprocessors.
-        return self._downloader._pps["post_process"]  # pyright: ignore[reportAttributeAccessIssue]
-
-    def _embed_subtitle_index(self) -> int | None:
-        pps = self._post_processors()
-        return max((i for i, pp in enumerate(pps) if isinstance(pp, FFmpegEmbedSubtitlePP)), default=None)
-
-    def _insert_pp(self, pp_class: type[NicoCommentJSONPP | NicoCommentFontsPP], *, after_embed: bool) -> bool:
-        embed_index = self._embed_subtitle_index()
-        if embed_index is None:
-            return False
-        pps = self._post_processors()
-        if not any(isinstance(pp, pp_class) for pp in pps):
-            pps.insert(embed_index + 1 if after_embed else embed_index, pp_class(self._downloader))
-        return True
+    def _embeds_subtitles(self) -> bool:
+        # yt-dlp has no public API for the postprocessors that API users add with add_post_processor.
+        return any(pp.get("key") == "FFmpegEmbedSubtitle" for pp in self.get_param("postprocessors") or [])
 
     def _content_length_ms(self, info) -> int | None:
         # The official player uses the duration of the media, which is not the rounded duration from the API.
@@ -236,7 +218,7 @@ class NicoCommentsPP(PostProcessor):
             self.get_param("skip_download")
             or not info.get("requested_formats")
             or info.get("ext") == ASS_CONTAINER
-            or self._embed_subtitle_index() is None
+            or not self._embeds_subtitles()
         ):
             return
         if self.get_param("merge_output_format") is not None:
