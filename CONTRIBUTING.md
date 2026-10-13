@@ -12,23 +12,19 @@ npm ci
 npm run lint
 ```
 
-`npm run lint` also type-checks the TypeScript code. `npm run format` formats
-it.
+`npm run format` formats the TypeScript code.
 
 ## Fonts
 
 The fonts are not in the repository. `uv run` downloads them to
-`yt_dlp_plugins/postprocessor/_nicocomments/font_data` when it builds the
-project, and `uv build` includes them in the distributions. After changing
-`font_files.py`, run `python3 tools/font_data.py --licenses`. This command also
-updates the license files of the fonts in `LICENSES`, which are in the
-repository.
+`yt_dlp_plugins/postprocessor/_nicocomments/font_data` on build. After changing
+`font_files.py`, run `python3 tools/font_data.py --licenses` to download the
+fonts and update their licenses in `LICENSES`.
 
 ## Build dependencies
 
-The Release workflow builds the distributions with the build dependencies pinned
-in `build-requirements.txt`. After changing `[build-system]` in
-`pyproject.toml`, update `build-requirements.in` and run:
+The build dependencies are pinned in `build-requirements.txt`. After changing
+`[build-system]` in `pyproject.toml`, update `build-requirements.in` and run:
 
 ```sh
 uv pip compile build-requirements.in --universal --python-version 3.10 --generate-hashes --output-file build-requirements.txt
@@ -58,8 +54,8 @@ contains one list item, for example:
 ```
 
 To make a release, run `release.sh` with `--major`, `--minor`, or `--patch`. It
-bumps that part of the latest `X.Y.Z` tag, opens the release notes in the Git
-editor, then commits and tags the new version. Then push the commit and the tag:
+opens the release notes in the Git editor, then commits and tags the new
+version. Then push the commit and the tag:
 
 ```sh
 ./release.sh --minor
@@ -67,7 +63,7 @@ git push --atomic --follow-tags origin main
 ```
 
 To change the notes of a published release, edit `release-notes/X.Y.Z.md`,
-commit and push the change, and then update the GitHub release:
+commit and push it, then run:
 
 ```sh
 gh release edit X.Y.Z --notes-file release-notes/X.Y.Z.md
