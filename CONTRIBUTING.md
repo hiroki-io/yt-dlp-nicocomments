@@ -1,5 +1,16 @@
 # Contributing
 
+## Run from a clone
+
+To use a clone with yt-dlp, run these commands in its root directory to download
+the fonts and add it to a yt-dlp plugin directory:
+
+```sh
+python3 tools/font_data.py
+mkdir -p ~/.config/yt-dlp/plugins
+ln -s "$PWD" ~/.config/yt-dlp/plugins/yt-dlp-nicocomments
+```
+
 ## Tests and lint
 
 ```sh

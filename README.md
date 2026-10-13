@@ -39,15 +39,6 @@ smaller fonts (see
 install fontTools so that the `pyftsubset` command is on `PATH`, for example
 with `brew install fonttools` or `pipx install fonttools`.
 
-To use the code from a clone of this repository, download the fonts and put the
-repository in a plugin directory:
-
-```sh
-python3 ~/yt-dlp-nicocomments/tools/font_data.py
-mkdir -p ~/.config/yt-dlp/plugins
-ln -s ~/yt-dlp-nicocomments ~/.config/yt-dlp/plugins/yt-dlp-nicocomments
-```
-
 ## Usage
 
 ```sh
