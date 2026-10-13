@@ -173,6 +173,11 @@ If you already set up the mpv scripts directory and `mpv.conf`, you can instead
 select **Use config directory** and choose `~/.config/mpv`. Restart IINA after
 you change these settings.
 
+With IINA 1.5.0 or later on macOS 27, comments may stutter in full screen mode.
+To work around this, open **Settings > Interface > Appearance > Liquid Glass**
+and turn off **On Screen Display**, or open **Settings > General** and select
+**Use legacy full screen**.
+
 ### Burn the comments into the video
 
 To burn the comment track into the video, run this command with an FFmpeg build
