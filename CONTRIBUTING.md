@@ -33,15 +33,13 @@ uv pip compile build-requirements.in --universal --python-version 3.10 --generat
 ## Drift checks
 
 The Drift workflow detects changes in the comment API and the official web
-player that can affect the plugin:
+player that can affect the plugin. `tools/drift/api.py` checks the API response
+fields that the plugin uses. `tools/drift/player.mts` compares the comment code
+of the official player with `tools/drift/official.json`, which intentionally
+does not contain the official code.
 
-- `tools/drift/api.py` checks the API response fields that the plugin uses.
-- `tools/drift/player.mts` compares the comment code of the official player with
-  `tools/drift/official.json`. The file records only hashes and names so that
-  the official code stays out of this repository. Run
-  `node tools/drift/player.mts check` locally to see the changed code.
-
-When the official player changes, update the plugin and run
+When the official player changes, run `node tools/drift/player.mts check`
+locally to see the changed code, update the plugin, and then run
 `node tools/drift/player.mts update`.
 
 ## Releases
