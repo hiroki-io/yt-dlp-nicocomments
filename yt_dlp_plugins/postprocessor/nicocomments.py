@@ -62,7 +62,9 @@ def parse_choice_option(name: str, value: object, choices: Collection[str]) -> s
 def parse_boolean_option(name: str, value: str | int) -> bool:
     if isinstance(value, int) and value in (0, 1):
         return bool(value)
-    return BOOLEAN_VALUES[parse_choice_option(name, value, BOOLEAN_VALUES)]
+    if not isinstance(value, str) or value.lower() not in BOOLEAN_VALUES:
+        raise optparse.OptionValueError(f"NicoComments: {name} must be true or false, not {format_option_value(value)}")
+    return BOOLEAN_VALUES[value.lower()]
 
 
 def parse_comments_option(value: str | int) -> int | None:

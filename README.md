@@ -54,15 +54,15 @@ subtitles.
 Options are passed after the postprocessor name (`NicoComments:`), separated by
 semicolons:
 
-| Option         | Values                                    | Default  | Description                                                                            |
-| -------------- | ----------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
-| `lang`         | `ja`, `en`, or `zh`, separated by commas  | `ja`     | Comment languages. Each language becomes a separate subtitle track.                    |
-| `comments`     | A number of comments, or `all`            | `0`      | Minimum number of comments per language. See [Past comments](#past-comments).          |
-| `nglevel`      | `high`, `medium`, `low`, or `none`        | `medium` | Hide comments that many users added to their NG lists. `high` hides the most comments. |
-| `opacity`      | A number from `0` to `1`                  | `1`      | Comment opacity                                                                        |
-| `writejson`    | `true`, `yes`, `1`, `false`, `no`, or `0` | `false`  | Write comments to a JSON file                                                          |
-| `defaulttrack` | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Mark the subtitle track of the first comment language as default                       |
-| `embedfonts`   | `true`, `yes`, `1`, `false`, `no`, or `0` | `true`   | Attach the fonts to the video file when `--embed-subs` is used                         |
+| Option         | Values                                   | Default  | Description                                                                            |
+| -------------- | ---------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
+| `lang`         | `ja`, `en`, or `zh`, separated by commas | `ja`     | Comment languages. Each language becomes a separate subtitle track.                    |
+| `comments`     | A number of comments, or `all`           | `0`      | Minimum number of comments per language. See [Past comments](#past-comments).          |
+| `nglevel`      | `high`, `medium`, `low`, or `none`       | `medium` | Hide comments that many users added to their NG lists. `high` hides the most comments. |
+| `opacity`      | A number from `0` to `1`                 | `1`      | Comment opacity                                                                        |
+| `writejson`    | `true` or `false`                        | `false`  | Write comments to a JSON file                                                          |
+| `defaulttrack` | `true` or `false`                        | `true`   | Mark the subtitle track of the first comment language as default                       |
+| `embedfonts`   | `true` or `false`                        | `true`   | Attach the fonts to the video file when `--embed-subs` is used                         |
 
 Example:
 
