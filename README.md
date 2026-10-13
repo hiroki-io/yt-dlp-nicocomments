@@ -54,6 +54,10 @@ subtitles.
 Options are passed after the postprocessor name (`NicoComments:`), separated by
 semicolons:
 
+```sh
+--use-postprocessor "NicoComments:when=video;lang=ja,en;nglevel=high"
+```
+
 | Option         | Values                                   | Default  | Description                                                                            |
 | -------------- | ---------------------------------------- | -------- | -------------------------------------------------------------------------------------- |
 | `lang`         | `ja`, `en`, or `zh`, separated by commas | `ja`     | Comment languages. Each language becomes a separate subtitle track.                    |
@@ -63,12 +67,6 @@ semicolons:
 | `writejson`    | `true` or `false`                        | `false`  | Write comments to a JSON file                                                          |
 | `defaulttrack` | `true` or `false`                        | `true`   | Mark the subtitle track of the first comment language as default                       |
 | `embedfonts`   | `true` or `false`                        | `true`   | Attach the fonts to the video file when `--embed-subs` is used                         |
-
-Example:
-
-```sh
---use-postprocessor "NicoComments:when=video;lang=ja,en;nglevel=high"
-```
 
 ### Shortcut
 
