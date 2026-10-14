@@ -127,6 +127,11 @@ class NicoCommentFontsPP(FFmpegPostProcessor):
         opts = []
         package_directory = font_data_directory()
         subsetter = font_subsetter()
+        if not subsetter:
+            self.report_warning(
+                "Attaching the whole fonts because fontTools is not found. "
+                "Install fontTools so that the pyftsubset command is on PATH to attach smaller fonts"
+            )
         for font in sorted(fonts, key=lambda font: font.filename):
             # The fonts are already attached when the subtitles are embedded again in the same file.
             opts += ["-map", f"-0:t:m:filename:{font.filename}"]

@@ -32,6 +32,10 @@ Dialogue: 0,0:00:00.00,0:00:01.00,Default,comment
 """
 SRT = "1\n00:00:00,000 --> 00:00:01,000\nsubtitle\n"
 FONTS = (font_files.SANS_BOLD, font_files.MATH)
+WHOLE_FONTS_WARNING = (
+    "Attaching the whole fonts because fontTools is not found. "
+    "Install fontTools so that the pyftsubset command is on PATH to attach smaller fonts"
+)
 NOT_ATTACHED_WARNING = "The fonts are not attached because the comments are not ASS subtitles in an MKV file"
 
 requires_ffmpeg = pytest.mark.skipif(
@@ -189,7 +193,7 @@ def test_raw_json_is_embedded_without_a_warning_and_kept(ydl, tmp_path):
 @requires_ffmpeg
 def test_fonts_are_attached_to_mkv_and_the_comment_track_becomes_default(ydl, tmp_path, fake_fonts):
     info = downloaded_video(ydl, tmp_path, "mkv")
-    assert run_fonts_pp(ydl, info, fake_fonts) == []
+    assert run_fonts_pp(ydl, info, fake_fonts) == [WHOLE_FONTS_WARNING]
     assert attachments_of(info) == [
         ("Noto Sans Math.ttf", "application/x-truetype-font"),
         ("NotoSansJP-Bold.otf", "application/vnd.ms-opentype"),
@@ -207,7 +211,7 @@ def test_zipped_fonts_are_extracted_for_ffmpeg(ydl, tmp_path, monkeypatch):
     info = downloaded_video(ydl, tmp_path, "mkv")
     with zipfile.ZipFile(archive_path) as archive:
         monkeypatch.setattr(attachments, "font_data_directory", lambda: zipfile.Path(archive, "font_data/"))
-        assert run_fonts_pp(ydl, info, used_chars(*FONTS)) == []
+        assert run_fonts_pp(ydl, info, used_chars(*FONTS)) == [WHOLE_FONTS_WARNING]
     assert [filename for filename, _ in attachments_of(info)] == ["Noto Sans Math.ttf", "NotoSansJP-Bold.otf"]
 
 
@@ -234,9 +238,9 @@ def test_attached_fonts_have_only_the_chars_of_all_comment_tracks(ydl, tmp_path)
 
 
 @requires_ffmpeg
-def test_whole_fonts_are_attached_without_a_font_subsetter(ydl, tmp_path, fake_fonts):
+def test_whole_fonts_are_attached_with_a_warning_without_a_font_subsetter(ydl, tmp_path, fake_fonts):
     info = downloaded_video(ydl, tmp_path, "mkv")
-    run_fonts_pp(ydl, info, fake_fonts)
+    assert run_fonts_pp(ydl, info, fake_fonts) == [WHOLE_FONTS_WARNING]
     assert set(attached_files(info, tmp_path).values()) == {b"font"}
 
 
@@ -331,7 +335,10 @@ def test_ffmpeg_failure_is_a_warning_and_the_temporary_file_is_removed(ydl, tmp_
         raise FFmpegPostProcessorError("ffmpeg failed")
 
     monkeypatch.setattr(NicoCommentFontsPP, "run_ffmpeg", fail)
-    assert run_fonts_pp(ydl, info, fake_fonts) == [f'Cannot update "{info["filepath"]}": ffmpeg failed']
+    assert run_fonts_pp(ydl, info, fake_fonts) == [
+        WHOLE_FONTS_WARNING,
+        f'Cannot update "{info["filepath"]}": ffmpeg failed',
+    ]
     assert sorted(path.name for path in tmp_path.glob("video.*")) == [
         "video.en.srt",
         "video.ja-comments.ass",
