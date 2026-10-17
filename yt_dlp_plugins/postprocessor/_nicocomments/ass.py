@@ -137,6 +137,7 @@ def ass_runs(chain: FontChain, runs: list[tuple[Face, str]], em: float, video_sc
 
 def ass_header(width: int, height: int, language: str) -> str:
     # VLC reads Language and prefers it to the language in the file name.
+    # Without YCbCr Matrix, mpv converts the colors from BT.601 to BT.709 on BT.709 videos.
     return f"""[Script Info]
 ScriptType: v4.00+
 Language: {language}
@@ -144,6 +145,7 @@ PlayResX: {width}
 PlayResY: {height}
 WrapStyle: 2
 ScaledBorderAndShadow: yes
+YCbCr Matrix: None
 
 [V4+ Styles]
 Format: {STYLE_FORMAT}

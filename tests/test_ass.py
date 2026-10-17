@@ -114,6 +114,10 @@ def test_build_ass_writes_the_language_in_the_script_info():
     assert "\nLanguage: en\n" in build_ass([], 1920, 1080, 1.0, "en")[0].split("[V4+ Styles]")[0]
 
 
+def test_build_ass_keeps_the_colors_unconverted():
+    assert "\nYCbCr Matrix: None\n" in build_ass([], 1920, 1080, 1.0, "ja")[0].split("[V4+ Styles]")[0]
+
+
 def test_ass_time_formats_centiseconds_as_h_mm_ss_cc():
     assert ass_time(360000 + 2 * 6000 + 3 * 100 + 4) == "1:02:03.04"
 
