@@ -37,6 +37,8 @@ const ROOTS: Record<string, Anchor> = {
   reverseToggle: { name: "nicoScriptSafeStateUpdate" },
   layerEvents: { name: "registerLayerProcessorEvents" },
   rendererRefresh: { name: "refreshCommentsByTarget" },
+  updateSchedule: { name: "setupUpdatingCommentsSchedule" },
+  updateSteps: { name: "updateCommentsByTargetInternal" },
   commentLayer: { kind: "class", contains: ["stagingChatManager", "slotRepository", "resetStagingStatus"] },
   layerProcessor: { kind: "class", contains: ["makeStagingSlot", "buildStagingParamsForMoving"] },
   stagingChats: { kind: "class", contains: ["getStagingChatList", "lastChatIndexForMoving"] },
