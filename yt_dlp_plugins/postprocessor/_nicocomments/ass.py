@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from .comments import Chat
 from .font_files import FontFile, add_font_chars
 from .fonts import Face, FontChain
-from .layout import STAGE_HEIGHT, STAGE_WIDTH, STROKE_WIDTH, Slot, SlotLayer
+from .layout import FRAME_MS, STAGE_HEIGHT, STAGE_WIDTH, STROKE_WIDTH, Slot, SlotLayer
 
 STROKE_OPACITY = 0.4
 LIVE_OPACITY = 0.5
@@ -92,8 +92,9 @@ def comment_opacity(chat: Chat, translucent: bool) -> float:
 def slot_events(
     slot: Slot, viewport: Viewport, video_scale: float, ass_layer: int, opacity: float
 ) -> tuple[list[str], dict[FontFile, set[str]]]:
-    start_cs = round(slot.shown_ms / 10)
-    end_cs = round(slot.hidden_ms / 10)
+    # The official player draws the comments of the previous frame and updates them after that.
+    start_cs = round((slot.shown_ms + FRAME_MS) / 10)
+    end_cs = round((slot.hidden_ms + FRAME_MS) / 10)
     if end_cs <= start_cs:
         return [], {}
     chat = slot.chat
@@ -104,8 +105,8 @@ def slot_events(
         f"\\c{ass_color(chat.color)}\\3c{ass_color(border)}"
         f"\\1a{ass_alpha(opacity)}\\3a{ass_alpha(STROKE_OPACITY * opacity)}"
     )
-    x0 = (slot.screen_x_at(start_cs * 10) + slot.text_offset_x - viewport.x) * video_scale
-    x1 = (slot.screen_x_at(end_cs * 10) + slot.text_offset_x - viewport.x) * video_scale
+    x0 = (slot.screen_x_at(start_cs * 10 - FRAME_MS) + slot.text_offset_x - viewport.x) * video_scale
+    x1 = (slot.screen_x_at(end_cs * 10 - FRAME_MS) + slot.text_offset_x - viewport.x) * video_scale
 
     events = []
     chars: dict[FontFile, set[str]] = {}

@@ -7,6 +7,7 @@ from conftest import make_chat
 
 from yt_dlp_plugins.postprocessor._nicocomments.layout import (
     BASE_WIDTH,
+    FRAME_MS,
     SLOT_COUNT,
     STAGE_HEIGHT,
     STAGE_WIDTH,
@@ -26,20 +27,20 @@ def make_slot(stage, chat):
 
 
 def test_moving_comment_timing():
-    assert chat_timing(chat(vpos_ms=10000), None) == (8000, 9000, 13000, 14000)
+    assert chat_timing(chat(vpos_ms=10000), None) == pytest.approx((8000, 9000, 13000, 14000))
 
 
 def test_fixed_comment_timing():
-    assert chat_timing(chat(vpos_ms=10000, commands=["ue"]), None) == (10000, 10000, 13000, 13000)
+    assert chat_timing(chat(vpos_ms=10000, commands=["ue"]), None) == pytest.approx((10000, 10000, 13000, 13000))
 
 
 def test_at_command_sets_the_view_time():
-    assert chat_timing(chat(vpos_ms=10000, commands=["@5"]), None) == (8000, 9000, 15000, 16000)
+    assert chat_timing(chat(vpos_ms=10000, commands=["@5"]), None) == pytest.approx((8000, 9000, 15000, 16000))
 
 
 def test_comments_near_the_end_finish_at_the_end():
-    assert chat_timing(chat(vpos_ms=10000), 11000) == (6000, 7000, 11000, 11000)
-    assert chat_timing(chat(vpos_ms=10000, commands=["shita"]), 11000) == (8000, 8000, 11000, 11000)
+    assert chat_timing(chat(vpos_ms=10000), 11000) == pytest.approx((6000, 7000, 11000, 11000))
+    assert chat_timing(chat(vpos_ms=10000, commands=["shita"]), 11000) == pytest.approx((8000, 8000, 11000, 11000))
 
 
 def test_moving_comment_crosses_the_4_3_area(fixed_width_chains):
@@ -79,6 +80,24 @@ def test_new_comment_hides_the_oldest_when_the_layer_is_full(fixed_width_chains)
     slots = stage.run_layer([chat(no=i) for i in range(SLOT_COUNT + 1)])
     assert slots[0].hidden_ms == slots[SLOT_COUNT].shown_ms
     assert all(slot.hidden_ms == chat_timing(chat(), None).hidden_ms for slot in slots[1:])
+
+
+def test_comment_is_hidden_at_the_first_frame_at_or_after_its_end():
+    assert chat_timing(chat(vpos_ms=10005, commands=["ue"]), None).hidden_ms == pytest.approx(13000 + FRAME_MS)
+
+
+def test_slot_that_ends_at_a_frame_does_not_count_for_the_slot_limit_in_that_frame(fixed_width_chains):
+    stage = make_stage(fixed_width_chains)
+    long, ending, *_ = stage.run_layer(
+        [
+            chat(vpos_ms=0, commands=["ue", "@10"], no=1),
+            chat(vpos_ms=50, commands=["ue"], no=2),
+            *(chat(vpos_ms=100, commands=["ue"], no=i) for i in range(3, SLOT_COUNT + 1)),
+            chat(vpos_ms=3050, commands=["ue"], no=SLOT_COUNT + 1),
+        ]
+    )
+    assert ending.hidden_ms == pytest.approx(3050)
+    assert long.hidden_ms == pytest.approx(10000)
 
 
 def test_wide_fixed_comment_shrinks_to_the_4_3_width(fixed_width_chains):

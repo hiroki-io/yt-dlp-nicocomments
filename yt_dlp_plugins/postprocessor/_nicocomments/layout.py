@@ -63,7 +63,8 @@ def chat_timing(chat: Chat, content_length_ms: float | None) -> Timing:
         staging, hidden = start - FRONT_ADJUST_MS, end + BEHIND_ADJUST_MS
     if content_length_ms is not None:
         hidden = min(hidden, content_length_ms)
-    return Timing(staging, start, end, hidden)
+    # The official player removes a comment at the first frame at or after its end.
+    return Timing(staging, start, end, next_frame_ms(hidden))
 
 
 @dataclass
@@ -288,7 +289,7 @@ class Stage:
             nonlocal staged
             slot = self.make_slot(chat, timing)
             slot.reversed = reversed_moving
-            staged = [s for s in staged if next_frame_ms(s.hidden_ms) >= frame]
+            staged = [s for s in staged if s.hidden_ms > frame]
             if len(staged) >= SLOT_COUNT:
                 evicted = staged.pop(0)
                 evicted.hidden_ms = min(evicted.hidden_ms, frame)
