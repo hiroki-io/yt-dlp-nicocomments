@@ -7,7 +7,7 @@
     "lint": "oxfmt --check && oxlint --deny-warnings && tsc"
   },
   "dependencies": {
-    "acorn": "8.18.0",
+    "acorn": "8.19.0",
     "eslint-scope": "9.1.2"
   },
   "devDependencies": {
