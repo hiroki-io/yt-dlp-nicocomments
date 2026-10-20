@@ -1,9 +1,8 @@
 from yt_dlp_plugins.postprocessor._nicocomments.assemble import assemble_comments
 
 
-def watch_comment(ng=None, script_threads=()):
+def watch_comment(ng=None):
     return {
-        "threads": [{"id": thread_id, "forkLabel": fork, "hasNicoscript": True} for thread_id, fork in script_threads],
         "layers": [
             {
                 "index": 0,
@@ -55,7 +54,7 @@ def test_ng_score_is_disabled_when_the_watch_api_disables_it():
     assert assemble_comments(watch_comment(ng={"ngScore": {"isDisabled": True}}), []).ng_score_disabled
 
 
-def test_nicoscripts_of_threads_with_nicoscript_apply_to_comments():
+def test_nicoscripts_of_owner_threads_apply_to_comments():
     threads = [
         thread(
             "1",
@@ -65,7 +64,7 @@ def test_nicoscripts_of_threads_with_nicoscript_apply_to_comments():
         ),
         thread("2", "main", comment(3, "a"), comment(4, "@置換 a c")),
     ]
-    owner_layer, main_layer = assemble_comments(watch_comment(script_threads=[(1, "owner")]), threads).layers
+    owner_layer, main_layer = assemble_comments(watch_comment(), threads).layers
     assert (main_layer.chats[0].lines, main_layer.chats[0].color) == (["b"], "FF0000")
     assert main_layer.chats[1].lines == ["@置換 b c"]
     assert owner_layer.reverse_ranges == [(0, 30000)]
@@ -77,7 +76,7 @@ def test_comments_that_replacements_make_too_long_are_removed():
         thread("1", "owner", *[comment(i, "@置換 a aa", vpos_ms=0) for i in range(1, 41)]),
         thread("2", "main", comment(41, "a"), comment(42, "b")),
     ]
-    _, main_layer = assemble_comments(watch_comment(script_threads=[(1, "owner")]), threads).layers
+    _, main_layer = assemble_comments(watch_comment(), threads).layers
     assert [chat.lines for chat in main_layer.chats] == [["b"]]
 
 
@@ -91,7 +90,7 @@ def test_owner_scripts_are_removed_before_replacement():
             comment(3, "@a", vpos_ms=0),
         )
     ]
-    owner_layer, _ = assemble_comments(watch_comment(script_threads=[(1, "owner")]), threads).layers
+    owner_layer, _ = assemble_comments(watch_comment(), threads).layers
     assert [chat.lines for chat in owner_layer.chats] == [["@b"]]
 
 
@@ -101,6 +100,6 @@ def test_owner_ngs_apply_to_viewer_comments_before_nicoscripts():
         thread("2", "main", comment(3, "A")),
     ]
     ng = {"owner": [{"source": "a", "destination": "b"}]}
-    owner_layer, main_layer = assemble_comments(watch_comment(ng=ng, script_threads=[(1, "owner")]), threads).layers
+    owner_layer, main_layer = assemble_comments(watch_comment(ng=ng), threads).layers
     assert owner_layer.chats[0].lines == ["a"]
     assert main_layer.chats[0].lines == ["c"]

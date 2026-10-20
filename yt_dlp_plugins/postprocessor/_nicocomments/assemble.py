@@ -12,11 +12,8 @@ def watch_thread_key(thread: dict) -> tuple[str, str]:
 
 
 def assemble_comments(comment: dict, threads: list[dict]) -> VideoComments:
-    script_threads = {
-        watch_thread_key(thread) for thread in comment.get("threads") or [] if thread.get("hasNicoscript")
-    }
     scripts = Nicoscripts.parse(
-        [raw for thread in threads if thread_key(thread) in script_threads for raw in thread["comments"]]
+        [raw for thread in threads if thread["fork"] == OWNER_FORK for raw in thread["comments"]]
     )
     layers = {}
     for layer in comment["layers"]:
