@@ -2,7 +2,6 @@ import sys
 from datetime import datetime
 
 from yt_dlp import YoutubeDL
-from yt_dlp.networking.exceptions import RequestError
 
 from yt_dlp_plugins.postprocessor._nicocomments.api import (
     WATCH_API_LANGUAGES,
@@ -58,7 +57,7 @@ def check(value, schema, path: str) -> list[str]:
 def check_language(ydl, language: str) -> tuple[list[str], int, int]:
     try:
         watch = fetch_watch_data(ydl, VIDEO_ID, language)
-    except (CommentAPIError, RequestError) as e:
+    except CommentAPIError as e:
         return [f"{language}: {e}"], 0, 0
     path = f"watch({language})"
     problems = check(watch, WATCH_SCHEMA, path)
@@ -69,7 +68,7 @@ def check_language(ydl, language: str) -> tuple[list[str], int, int]:
         return [f"{path}.comment.nvComment.params.language is {actual!r}"], 0, 0
     try:
         response = request_threads(ydl, watch["comment"])
-    except (CommentAPIError, RequestError) as e:
+    except CommentAPIError as e:
         return [f"{language}: {e}"], 0, 0
     problems = check(response, THREADS_SCHEMA, f"threads({language})")
     if problems:
@@ -90,7 +89,7 @@ def check_language(ydl, language: str) -> tuple[list[str], int, int]:
 def check_owner_ngs(ydl) -> list[str]:
     try:
         watch = fetch_watch_data(ydl, OWNER_NG_VIDEO_ID)
-    except (CommentAPIError, RequestError) as e:
+    except CommentAPIError as e:
         return [f"{OWNER_NG_VIDEO_ID}: {e}"]
     problems = check(watch, WATCH_SCHEMA, f"watch({OWNER_NG_VIDEO_ID})")
     if not problems and not watch["comment"]["ng"]["owner"]:
@@ -104,7 +103,7 @@ def check_owner_nicoscripts(ydl) -> list[str]:
         if problems := check(watch, WATCH_SCHEMA, f"watch({NICOSCRIPT_VIDEO_ID})"):
             return problems
         response = request_threads(ydl, watch["comment"])
-    except (CommentAPIError, RequestError) as e:
+    except CommentAPIError as e:
         return [f"{NICOSCRIPT_VIDEO_ID}: {e}"]
     if problems := check(response, THREADS_SCHEMA, f"threads({NICOSCRIPT_VIDEO_ID})"):
         return problems

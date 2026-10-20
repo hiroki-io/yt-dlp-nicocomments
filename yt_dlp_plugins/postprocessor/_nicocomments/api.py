@@ -71,16 +71,20 @@ def is_logged_in(ydl) -> bool:
 def fetch_watch_data(ydl, video_id: str, language: str = "ja") -> dict:
     proxy = ydl.params.get("geo_verification_proxy")
     proxies = {"all": proxy} if proxy else None
-    if is_logged_in(ydl):
-        try:
-            return load_watch_data(ydl, "v3", video_id, language, proxies)
-        except CommentAPIError as e:
-            # A stale user_session cookie can make the v3 API fail even for videos open to guests.
-            ydl.report_warning(f"Loading the watch API as a guest because the logged-in request failed ({e})")
-    return load_watch_data(ydl, "v3_guest", video_id, language, proxies)
+    try:
+        if is_logged_in(ydl):
+            try:
+                return load_watch_data(ydl, "v3", video_id, language, proxies)
+            except CommentAPIError as e:
+                # A stale user_session cookie can make the v3 API fail even for videos open to guests.
+                ydl.report_warning(f"Loading the watch API as a guest because the logged-in request failed ({e})")
+        return load_watch_data(ydl, "v3_guest", video_id, language, proxies)
+    except RequestError as e:
+        raise CommentAPIError(f"failed to load the watch API: {e}") from e
 
 
 def load_watch_data(ydl, path: str, video_id: str, language: str, proxies: dict | None) -> dict:
+    # Not RequestError: a network error must not fall back to a guest thread key, which cannot load past comments.
     try:
         api = request_watch_api(ydl, path, video_id, language, proxies)
     except HTTPError as e:
@@ -115,11 +119,8 @@ def fetch_comments(
     report_warning: Callable[[str], None] = lambda _: None,
 ) -> tuple[VideoComments, RawComments]:
     fetched_at = datetime.now(timezone.utc)
-    try:
-        comment = fetch_comment_data(ydl, video_id, language)
-        threads = fetch_threads(ydl, comment)
-    except RequestError as e:
-        raise CommentAPIError(f"failed to load comments: {e}") from e
+    comment = fetch_comment_data(ydl, video_id, language)
+    threads = fetch_threads(ydl, comment)
     if min_comments != 0:
         threads = fetch_past_threads(
             past_page_fetcher(ydl, video_id, language, comment),
@@ -142,18 +143,21 @@ def fetch_threads(ydl, comment: dict, additionals: dict | None = None) -> list[d
 
 def request_threads(ydl, comment: dict, additionals: dict | None = None) -> Any:
     nv = comment["nvComment"]
-    return fetch_json(
-        ydl,
-        f"{nv['server']}/v1/threads",
-        data={"additionals": additionals or {}, "params": nv["params"], "threadKey": nv["threadKey"]},
-        headers={
-            **API_HEADERS,
-            "Content-Type": "text/plain;charset=UTF-8",
-            "Origin": "https://www.nicovideo.jp",
-            "Referer": "https://www.nicovideo.jp/",
-            "X-Client-Os-Type": "others",
-        },
-    )
+    try:
+        return fetch_json(
+            ydl,
+            f"{nv['server']}/v1/threads",
+            data={"additionals": additionals or {}, "params": nv["params"], "threadKey": nv["threadKey"]},
+            headers={
+                **API_HEADERS,
+                "Content-Type": "text/plain;charset=UTF-8",
+                "Origin": "https://www.nicovideo.jp",
+                "Referer": "https://www.nicovideo.jp/",
+                "X-Client-Os-Type": "others",
+            },
+        )
+    except RequestError as e:
+        raise CommentAPIError(f"failed to load the comment threads: {e}") from e
 
 
 def fetch_past_threads(
@@ -175,7 +179,7 @@ def fetch_past_threads(
         time.sleep(PAST_PAGE_DELAY)
         try:
             read_threads = [read_past_thread(thread, when) for thread in fetch_page(when)]
-        except (CommentAPIError, RequestError) as e:
+        except CommentAPIError as e:
             report_warning(f"Stopped loading past comments: {e}")
             break
         page += 1
@@ -241,25 +245,26 @@ def past_page_fetcher(ydl, video_id: str, language: str, comment: dict) -> Calla
 def fetch_past_page(ydl, video_id: str, language: str, comment: dict, when: int) -> tuple[list[dict], dict]:
     try:
         return fetch_threads(ydl, comment, {"when": when}), comment
-    except HTTPError as e:
+    except CommentAPIError as e:
         check_past_page_error(e)
     # The thread key expires in about 10 minutes.
     comment = fetch_comment_data(ydl, video_id, language)
     try:
         return fetch_threads(ydl, comment, {"when": when}), comment
-    except HTTPError as e:
+    except CommentAPIError as e:
         check_past_page_error(e)
         raise
 
 
-def check_past_page_error(error: HTTPError) -> None:
-    if error.status != 400:
+def check_past_page_error(error: CommentAPIError) -> None:
+    cause = error.__cause__
+    if not isinstance(cause, HTTPError) or cause.status != 400:
         raise error
     # A renewed thread key cannot fix INVALID_TOKEN, which a guest thread key gets.
-    if api_error_code(error) == "INVALID_TOKEN":
+    if api_error_code(cause) == "INVALID_TOKEN":
         raise CommentAPIError(
             "the comment API needs a login for past comments. Use --cookies-from-browser or --cookies"
-        ) from error
+        ) from cause
 
 
 def api_error_code(error: HTTPError) -> str | None:

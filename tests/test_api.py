@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import pytest
 from conftest import FakeDownloader, logged_in
 from yt_dlp.networking import Response
-from yt_dlp.networking.exceptions import HTTPError
+from yt_dlp.networking.exceptions import HTTPError, TransportError
 
 from yt_dlp_plugins.postprocessor._nicocomments import api
 from yt_dlp_plugins.postprocessor._nicocomments.api import (
@@ -99,6 +99,27 @@ def test_watch_data_falls_back_to_the_guest_api_when_the_user_api_fails():
         "Loading the watch API as a guest because the logged-in request failed "
         "(failed to load the watch API: HTTP Error 400: Bad Request)"
     ]
+
+
+def test_watch_data_does_not_fall_back_to_the_guest_api_on_a_transport_error(sleeps):
+    ydl = logged_in(FakeDownloader([TransportError("timed out")] * 3))
+    with pytest.raises(CommentAPIError, match=r"^failed to load the watch API: timed out$"):
+        fetch_watch_data(ydl, "sm9")
+    assert len(ydl.requests) == 3
+    assert ydl.warnings == []
+
+
+def test_transport_error_of_the_guest_api_after_the_fallback_raises_comment_api_error(sleeps):
+    ydl = logged_in(FakeDownloader([http_error(400)] + [TransportError("timed out")] * 3))
+    with pytest.raises(CommentAPIError, match=r"^failed to load the watch API: timed out$"):
+        fetch_watch_data(ydl, "sm9")
+    assert "/api/watch/v3_guest/sm9?" in ydl.requests[1].url
+
+
+def test_transport_error_of_the_threads_raises_comment_api_error(sleeps):
+    ydl = FakeDownloader([watch_api()] + [TransportError("timed out")] * 3)
+    with pytest.raises(CommentAPIError, match=r"^failed to load the comment threads: timed out$"):
+        fetch_comments(ydl, "sm9")
 
 
 @pytest.mark.parametrize(
@@ -409,7 +430,19 @@ def test_loaded_comments_are_kept_after_an_error_in_the_past_pages():
     ydl = FakeDownloader([threads_response(raw_comment("a", 1, "1970-01-01T00:10:00+00:00")), http_error(503)])
     warnings: list[str] = []
     threads = past_threads(ydl, None, warnings=warnings)
-    assert warnings == ["Stopped loading past comments: HTTP Error 503: Service Unavailable"]
+    assert warnings == [
+        "Stopped loading past comments: failed to load the comment threads: HTTP Error 503: Service Unavailable"
+    ]
+    assert [raw["no"] for raw in threads[0]["comments"]] == [1]
+
+
+def test_transport_error_in_the_past_pages_stops_without_renewing_the_thread_key(sleeps):
+    first = threads_response(raw_comment("a", 1, "1970-01-01T00:10:00+00:00"))
+    ydl = FakeDownloader([first] + [TransportError("timed out")] * 3)
+    warnings: list[str] = []
+    threads = past_threads(ydl, None, warnings=warnings)
+    assert len(ydl.requests) == 4
+    assert warnings == ["Stopped loading past comments: failed to load the comment threads: timed out"]
     assert [raw["no"] for raw in threads[0]["comments"]] == [1]
 
 
