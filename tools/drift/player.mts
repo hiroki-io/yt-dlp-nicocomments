@@ -32,7 +32,7 @@ const ROOTS: Record<string, Anchor> = {
   nicoscriptParser: { contains: ["pizza", "forbidComment", "body"] },
   commentFilters: { contains: ["filterCommentQueue", "$fork", "owner", "updatedState"] },
   reverseRanges: { contains: ["reverseTimeRangesForOwner", "reverseTimeRangesForNonOwner", "targetThreads"] },
-  layerKind: { contains: ["$isVideoThread", "ai"] },
+  layerKind: { contains: ["$isVideoThread", "ai", "owner"] },
   aiCommentColor: { name: "aiCommentStagingFilter" },
   reverseToggle: { name: "nicoScriptSafeStateUpdate" },
   layerEvents: { name: "registerLayerProcessorEvents" },
