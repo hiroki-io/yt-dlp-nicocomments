@@ -1,3 +1,4 @@
 __pycache__/
 node_modules/
+tools/drift/bundles/
 yt_dlp_plugins/postprocessor/_nicocomments/font_data/

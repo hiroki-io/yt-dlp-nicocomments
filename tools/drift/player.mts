@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse } from "acorn";
 import type { AnyNode, Token as AcornToken } from "acorn";
 import { analyze } from "eslint-scope";
@@ -25,6 +27,7 @@ const USER_AGENT =
 // Code of bundled libraries such as PixiJS and immer changes when the libraries update, so closures do not include it.
 const LIBRARY_WORDS = ["exports", "prototype", "autoFreeze_", "useStrictShallowCopy_"];
 const EXPECTED_PATH = new URL("official.json", import.meta.url);
+const BUNDLES_DIR = fileURLToPath(new URL("bundles", import.meta.url));
 // Minification renames variables but keeps property names, so reports name the changed members.
 const MEMBER_TYPES = ["MethodDefinition", "PropertyDefinition", "Property", "AssignmentExpression"];
 
@@ -476,6 +479,13 @@ async function main() {
   const bundle = bundlePath
     ? { name: bundlePath.split("/").pop() ?? bundlePath, source: await readFile(bundlePath, "utf8") }
     : await fetchBundle();
+  // Public CI runs must not keep the code of the official player.
+  if (!bundlePath && !process.env.CI) {
+    await mkdir(BUNDLES_DIR, { recursive: true });
+    const savedPath = join(BUNDLES_DIR, bundle.name);
+    await writeFile(savedPath, bundle.source);
+    console.log(`saved: ${savedPath}`);
+  }
   const actual = extract(bundle.source);
   if (command === "update") {
     console.log(`bundle: ${bundle.name}`);

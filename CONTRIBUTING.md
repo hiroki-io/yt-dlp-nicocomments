@@ -51,7 +51,8 @@ does not contain the official code.
 
 When the official player changes, run `node tools/drift/player.mts check`
 locally to see the changed code, update the plugin, and then run
-`node tools/drift/player.mts update`.
+`node tools/drift/player.mts update`. Local runs save the fetched bundle in
+`tools/drift/bundles/`.
 
 ## Releases
 
