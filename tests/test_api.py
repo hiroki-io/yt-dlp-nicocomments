@@ -463,11 +463,9 @@ def test_raw_json_drops_the_values_of_the_viewer():
         "comment": {
             "nvComment": {"server": "s", "params": {}},
             "ng": {"owner": []},
-            "threads": [{"id": 2, "forkLabel": "main"}],
         },
         "threads": [{"id": "2", "fork": "main", "comments": [{"id": "a", "no": 1}]}],
     }
     assert "threadKey" in comment["nvComment"]
     assert "viewer" in comment["ng"]
-    assert "threadkey" in comment["threads"][0]
     assert "isMyPost" in threads[0]["comments"][0]

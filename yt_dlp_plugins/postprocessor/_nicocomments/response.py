@@ -36,9 +36,6 @@ def check_comment_data(comment: Any) -> dict:
         and isinstance(nv.get("threadKey"), str),
         "invalid comment.nvComment",
     )
-    expect(is_optional(comment.get("threads"), list), "comment.threads is not an array")
-    for thread in comment.get("threads") or []:
-        expect(isinstance(thread, dict) and is_watch_thread_id(thread), "invalid thread in comment.threads")
     layers = comment.get("layers")
     expect(is_objects(layers), "comment.layers is not an array of objects")
     for layer in layers:

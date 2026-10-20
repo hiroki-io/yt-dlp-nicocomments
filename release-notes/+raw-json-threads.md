@@ -1,0 +1,1 @@
+- Remove `comment.threads` from the raw JSON because the plugin does not use it

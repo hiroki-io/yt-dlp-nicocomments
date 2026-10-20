@@ -15,7 +15,6 @@ OWNER_NG_VIDEO_ID = "sm1715919"
 WATCH_SCHEMA = {
     "comment": {
         "nvComment": {"server": str, "params": dict, "threadKey": str},
-        "threads": [{"id": int, "forkLabel": str}],
         "layers": [{"index": int, "isTranslucent": bool, "threadIds": [{"id": int, "forkLabel": str}]}],
         "ng": {"ngScore": {"isDisabled": bool}, "owner": [{"source": str, "destination": str}]},
     }

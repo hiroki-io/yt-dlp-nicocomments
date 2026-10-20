@@ -28,12 +28,10 @@ class RawComments:
 
     def to_json(self, video_id: str, language: str) -> str:
         # Drop the values of the viewer: the keys expire soon, and the NG list and own posts are private.
-        comment = without(self.comment, "keys")
+        comment = without(self.comment, "keys", "threads")
         comment["nvComment"] = without(comment["nvComment"], "threadKey")
         if isinstance(comment.get("ng"), dict):
             comment["ng"] = without(comment["ng"], "viewer")
-        if isinstance(comment.get("threads"), list):
-            comment["threads"] = [without(thread, "threadkey") for thread in comment["threads"]]
         threads = [
             {**thread, "comments": [without(raw, "isMyPost", "nicoruId") for raw in thread["comments"]]}
             for thread in self.threads
