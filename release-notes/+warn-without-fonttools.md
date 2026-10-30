@@ -1,1 +1,0 @@
-- Warn when the fonts are attached whole because fontTools is not found
