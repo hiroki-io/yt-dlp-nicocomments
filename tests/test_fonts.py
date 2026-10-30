@@ -44,6 +44,11 @@ def test_chain_uses_its_font_and_then_the_fallback_fonts(chains, key):
     ]
 
 
+def test_first_faces_map_no_break_space_to_the_space_glyph(chains):
+    for chain in chains.values():
+        assert chain.faces[0].cmap[0xA0] == chain.faces[0].cmap[0x20]
+
+
 def test_spaces_for_comment_art_have_their_own_widths(chains):
     assert chains["defont"].text_width("\u2000\u2004\u2006", 600) == pytest.approx(300 + 200 + 100)
 

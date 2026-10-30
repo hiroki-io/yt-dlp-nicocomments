@@ -12,6 +12,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.ass import (
     ass_header,
     ass_runs,
     drawn_chars,
+    keep_edge_spaces,
     line_top,
 )
 from yt_dlp_plugins.postprocessor._nicocomments.comments import FONT_KEYS
@@ -41,11 +42,14 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def render(chain: fonts.FontChain, font_directory, tmp_path, text: str = TEXT) -> tuple[Image.Image, dict[str, str]]:
-    runs = chain.runs(text)
+def render(
+    chain: fonts.FontChain, font_directory, tmp_path, text: str = TEXT, alignment: int = 7
+) -> tuple[Image.Image, dict[str, str]]:
+    runs = chain.runs(keep_edge_spaces(text))
+    x = {7: X, 8: WIDTH // 2, 9: WIDTH - X}[alignment]
     (tmp_path / "test.ass").write_text(
         ass_header(WIDTH, HEIGHT, "ja") + "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,"
-        f"{{\\an7\\pos({X},{line_top(runs, EM, BASELINE):.2f})\\bord0}}{ass_runs(chain, runs, EM, 1.0)}\n",
+        f"{{\\an{alignment}\\pos({x},{line_top(runs, EM, BASELINE):.2f})\\bord0}}{ass_runs(chain, runs, EM, 1.0)}\n",
         encoding="utf-8",
     )
     command = ["ffmpeg", "-v", "verbose", "-y", "-f", "lavfi", "-i", f"color=black:s={WIDTH}x{HEIGHT}:d=0.1"]
@@ -100,6 +104,23 @@ def test_libass_text_position_matches_pillow(chains, font_directory, key, tmp_pa
 
 
 @pytest.mark.parametrize("key", FONT_KEYS)
+@pytest.mark.parametrize("text", ["  \U0001f600", "\U0001f600  ", "  \U0001f600 "])
+@pytest.mark.parametrize("alignment", [7, 8, 9])
+def test_libass_keeps_the_spaces_at_both_ends_of_a_line(chains, font_directory, key, text, alignment, tmp_path):
+    chain = chains[key]
+    without_spaces, _ = render(chain, font_directory, tmp_path, text.strip(" "), alignment)
+    with_spaces, _ = render(chain, font_directory, tmp_path, text, alignment)
+    without_bounds, with_bounds = ink_bounds(without_spaces), ink_bounds(with_spaces)
+    assert without_bounds is not None and with_bounds is not None
+    leading = chain.text_width(" " * (len(text) - len(text.lstrip(" "))), EM)
+    trailing = chain.text_width(" " * (len(text) - len(text.rstrip(" "))), EM)
+    # The leading spaces move the ink to the right and the trailing spaces to the left, by half with \an8.
+    shift = (leading * (9 - alignment) - trailing * (alignment - 7)) / 2
+    assert with_bounds[0::2] == pytest.approx([b + shift for b in without_bounds[0::2]], abs=1)
+    assert with_bounds[1::2] == pytest.approx(without_bounds[1::2], abs=1)
+
+
+@pytest.mark.parametrize("key", FONT_KEYS)
 def test_libass_draws_emoji_with_the_emoji_face(chains, font_directory, key, tmp_path):
     chain = chains[key]
     drawn, selected = render(chain, font_directory, tmp_path, "\U0001f600")
@@ -108,14 +129,14 @@ def test_libass_draws_emoji_with_the_emoji_face(chains, font_directory, key, tmp
 
 
 @pytest.mark.parametrize("key", FONT_KEYS)
-@pytest.mark.parametrize("text", [TEXT, "e\u0301か\u3099"])
+@pytest.mark.parametrize("text", [TEXT, "e\u0301か\u3099", f"  {TEXT}  "])
 def test_libass_draws_the_same_image_with_the_subset_fonts(chains, font_directory, key, text, tmp_path):
     pytest.importorskip("fontTools")
     chain = chains[key]
     subset_directory = tmp_path / "fonts"
     subset_directory.mkdir()
     chars: dict[font_files.FontFile, set[str]] = {}
-    for face, part in chain.runs(text):
+    for face, part in chain.runs(keep_edge_spaces(text)):
         font_files.add_font_chars(chars, {face.font: drawn_chars(part)})
     for font, font_chars in chars.items():
         data = (font_directory / font.filename).read_bytes()

@@ -12,6 +12,7 @@ from yt_dlp_plugins.postprocessor._nicocomments.ass import (
     build_ass,
     comment_opacity,
     drawn_chars,
+    keep_edge_spaces,
     paint_order,
     run_chars,
     slot_events,
@@ -140,6 +141,10 @@ def test_drawn_chars_include_the_escapes_and_the_composed_chars():
     assert drawn_chars("e\u0301\\") == {"e", "\u0301", "\u00e9", "\\", "\u200b"}
 
 
+def test_drawn_chars_add_the_space_that_libass_uses_for_no_break_spaces():
+    assert drawn_chars("\u00a0a") == {"\u00a0", " ", "a"}
+
+
 def test_run_chars_add_the_chars_missing_from_the_run_font_to_the_fonts_that_have_them():
     fonts = [FontFile(name, f"https://example.com/{name}.otf", "") for name in ("Main", "Math", "Symbols", "Other")]
     cmaps = [{ord("a"): 1}, {ord("\u0338"): 1}, {ord("\u0338"): 1}, {ord("b"): 1}]
@@ -171,6 +176,17 @@ def test_build_ass_returns_the_chars_of_the_drawn_lines_for_each_font():
     slots = [make_slot(body="ab"), make_slot(body="c\\", no=2)]
     _, chars = build_ass([SlotLayer(0, False, slots)], 1920, 1080, 1.0, "ja")
     assert chars == {slots[0].font_chain.faces[0].font: {"a", "b", "c", "\\", "\u200b"}}
+
+
+def test_keep_edge_spaces_replaces_only_the_spaces_at_both_ends_with_no_break_spaces():
+    assert keep_edge_spaces("  a b ") == "\u00a0\u00a0a b\u00a0"
+    assert keep_edge_spaces("a b") == "a b"
+
+
+def test_slot_events_draw_the_spaces_at_both_ends_as_no_break_spaces():
+    events, chars = slot_events(make_slot(body=" a "), STAGE, 1.0, 0, 1.0)
+    assert events[0].endswith("}\u00a0a\u00a0")
+    assert chars == {make_chain().faces[0].font: {"\u00a0", " ", "a"}}
 
 
 def test_ass_runs_write_synthetic_bold_for_each_run():

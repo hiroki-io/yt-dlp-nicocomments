@@ -64,10 +64,22 @@ def ass_escape(text: str) -> str:
     return text.replace("\\", "\\\u200b").replace("{", "\\{").replace("}", "\\}")
 
 
+def keep_edge_spaces(line: str) -> str:
+    # libass drops the U+0020 spaces at both ends of an event and their height, but not U+00A0 spaces.
+    # The first face of each font chain maps U+00A0 to the same glyph as U+0020.
+    body = line.lstrip(" ")
+    core = body.rstrip(" ")
+    return "\u00a0" * (len(line) - len(body)) + core + "\u00a0" * (len(body) - len(core))
+
+
 def drawn_chars(text: str) -> set[str]:
     escaped = ass_escape(text)
     # HarfBuzz composes combining sequences into the precomposed glyphs that the font has.
-    return {*escaped, *unicodedata.normalize("NFC", escaped)}
+    chars = {*escaped, *unicodedata.normalize("NFC", escaped)}
+    if "\u00a0" in chars:
+        # libass 0.17.1 and earlier look up U+00A0 as U+0020 in the font.
+        chars.add(" ")
+    return chars
 
 
 def run_chars(chain: FontChain, runs: list[tuple[Face, str]]) -> dict[FontFile, set[str]]:
@@ -113,7 +125,7 @@ def slot_events(
     for line, baseline in zip(chat.lines, slot.line_baselines(), strict=True):
         if not line.strip():
             continue
-        runs = slot.font_chain.runs(line)
+        runs = slot.font_chain.runs(keep_edge_spaces(line))
         add_font_chars(chars, run_chars(slot.font_chain, runs))
         y = (line_top(runs, em, baseline) - viewport.y) * video_scale
         if chat.is_fixed:
