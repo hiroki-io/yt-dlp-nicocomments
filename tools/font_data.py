@@ -1,6 +1,8 @@
 import argparse
 import hashlib
+import http.client
 import importlib.util
+import re
 import struct
 import sys
 import urllib.request
@@ -21,9 +23,33 @@ def load_font_files():
     return module
 
 
-def download(url: str) -> bytes:
+GITHUB_URL_PATTERNS = (
+    r"https://github\.com/([^/]+/[^/]+)/raw/([^/]+)/",
+    r"https://raw\.githubusercontent\.com/([^/]+/[^/]+)/([^/]+)/",
+)
+
+
+def jsdelivr_url(url: str) -> str | None:
+    for pattern in GITHUB_URL_PATTERNS:
+        if match := re.match(pattern, url):
+            return f"https://cdn.jsdelivr.net/gh/{match[1]}@{match[2]}/{url[match.end() :]}"
+    return None
+
+
+def read_url(url: str) -> bytes:
     with urllib.request.urlopen(url, timeout=60) as response:
         return response.read()
+
+
+def download(url: str) -> bytes:
+    try:
+        return read_url(url)
+    except (OSError, http.client.HTTPException) as error:
+        mirror = jsdelivr_url(url)
+        if mirror is None:
+            raise
+        print(f"Downloading {mirror} after {error!r}", file=sys.stderr)
+        return read_url(mirror)
 
 
 def checksum(data: bytes | bytearray) -> int:

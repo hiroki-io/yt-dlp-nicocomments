@@ -1,3 +1,4 @@
+import http.client
 import importlib.util
 import struct
 from pathlib import Path
@@ -71,3 +72,48 @@ def test_remove_bmp_cmap_removes_every_windows_bmp_subtable(font_data):
     assert cmap_records(result) == [(3, 10)]
     assert len(result) == len(data)
     assert font_data.checksum(result) == 0xB1B0AFBA
+
+
+@pytest.mark.parametrize(
+    ("url", "mirror"),
+    [
+        (
+            "https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf",
+            "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@Sans2.004/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf",
+        ),
+        (
+            "https://raw.githubusercontent.com/google/fonts/b979dba422e445492b0eb9951ac52ee0b4d648c3/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf",
+            "https://cdn.jsdelivr.net/gh/google/fonts@b979dba422e445492b0eb9951ac52ee0b4d648c3/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf",
+        ),
+        ("https://example.com/font.ttf", None),
+    ],
+)
+def test_jsdelivr_url(font_data, url, mirror):
+    assert font_data.jsdelivr_url(url) == mirror
+
+
+def test_download_falls_back_to_jsdelivr(font_data, monkeypatch):
+    urls = []
+
+    def read_url(url):
+        urls.append(url)
+        if "jsdelivr" not in url:
+            raise http.client.IncompleteRead(b"")
+        return b"font"
+
+    monkeypatch.setattr(font_data, "read_url", read_url)
+    assert font_data.download("https://github.com/a/b/raw/c/d") == b"font"
+    assert urls == ["https://github.com/a/b/raw/c/d", "https://cdn.jsdelivr.net/gh/a/b@c/d"]
+
+
+def test_download_raises_without_mirror(font_data, monkeypatch):
+    urls = []
+
+    def read_url(url):
+        urls.append(url)
+        raise TimeoutError
+
+    monkeypatch.setattr(font_data, "read_url", read_url)
+    with pytest.raises(TimeoutError):
+        font_data.download("https://example.com/font.ttf")
+    assert urls == ["https://example.com/font.ttf"]
