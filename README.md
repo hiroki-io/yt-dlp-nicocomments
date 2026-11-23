@@ -133,22 +133,7 @@ Download the script and run mpv with it:
 mpv --script=/path/to/nicocomments-display-fps.lua --video-sync=display-resample video.mkv
 ```
 
-[`nicocomments-play.sh`](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/nicocomments-play.sh)
-runs the same command and passes its arguments to mpv. Put it in the same
-directory as `nicocomments-display-fps.lua`:
-
-```sh
-chmod +x nicocomments-play.sh
-./nicocomments-play.sh video.mkv
-```
-
-On Windows, use
-[`nicocomments-play.bat`](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/nicocomments-play.bat)
-in the same way:
-
-```bat
-nicocomments-play.bat video.mkv
-```
+The [launcher scripts](#launcher-scripts) run mpv with these options.
 
 To use the script for all videos, put it in the mpv scripts directory and add
 `video-sync=display-resample` to `mpv.conf`:
@@ -177,6 +162,66 @@ With IINA 1.5.0 or later on macOS 27, comments may stutter in full screen mode.
 To work around this, open **Settings > Interface > Appearance > Liquid Glass**
 and turn off **On Screen Display**, or open **Settings > General** and select
 **Use legacy full screen**.
+
+### Play a URL in mpv
+
+mpv can play a Niconico URL without saving the video. To show the comments on
+it, load the mpv script
+[`nicocomments-url.lua`](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/nicocomments-url.lua):
+
+```sh
+mpv --script=/path/to/nicocomments-url.lua https://www.nicovideo.jp/watch/sm9
+```
+
+The [launcher scripts](#launcher-scripts) load this script too. To use the
+script for all URLs, put it in the [mpv scripts directory](#mpv). In
+[IINA](#iina), add its path to the `scripts` entry, and put a colon between the
+two paths.
+
+To load the comments, the script runs the yt-dlp that mpv uses, and passes the
+`--ytdl-raw-options` of mpv to it. The plugin must be installed for that yt-dlp
+(see [Install](#install)). If the plugin is installed for another yt-dlp, set
+`ytdl_path` to that yt-dlp.
+
+Set the options of the script in `script-opts/nicocomments.conf` in the mpv
+configuration directory, or in the environment variables:
+
+| Option      | Environment variable     | Description                                                            |
+| ----------- | ------------------------ | ---------------------------------------------------------------------- |
+| `options`   | `NICOCOMMENTS_OPTIONS`   | Plugin [options](#options), for example `lang=ja,en;nglevel=high`      |
+| `fonts_dir` | `NICOCOMMENTS_FONTS_DIR` | Directory that contains the fonts of the comments                      |
+| `ytdl_path` |                          | Path to the yt-dlp executable. The default is the yt-dlp that mpv uses |
+
+```text
+options=lang=ja,en;nglevel=high
+fonts_dir=/path/to/font_data
+```
+
+mpv needs the fonts to show the comments correctly. Set `fonts_dir` to the
+`yt_dlp_plugins/postprocessor/_nicocomments/font_data` directory of the
+installed plugin, or install the font files linked in
+[docs/fonts.md](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/docs/fonts.md).
+
+### Launcher scripts
+
+[`nicocomments-play.sh`](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/nicocomments-play.sh)
+runs mpv with `nicocomments-display-fps.lua`, `nicocomments-url.lua`, and
+`--video-sync=display-resample`, and passes its arguments to mpv. Put it in the
+same directory as the two Lua scripts:
+
+```sh
+chmod +x nicocomments-play.sh
+./nicocomments-play.sh video.mkv
+./nicocomments-play.sh https://www.nicovideo.jp/watch/sm9
+```
+
+On Windows, use
+[`nicocomments-play.bat`](https://github.com/hiroki-io/yt-dlp-nicocomments/blob/main/nicocomments-play.bat)
+in the same way:
+
+```bat
+nicocomments-play.bat video.mkv
+```
 
 ### Burn the comments into the video
 
