@@ -14,6 +14,14 @@ updates:
     cooldown:
       default-days: 7
 
+  # Kept apart from pyproject.toml, or Dependabot expects uv.lock to change too.
+  - package-ecosystem: uv
+    directory: /build-requirements
+    schedule:
+      interval: daily
+    cooldown:
+      default-days: 7
+
   - package-ecosystem: npm
     directory: /tools/drift
     schedule:

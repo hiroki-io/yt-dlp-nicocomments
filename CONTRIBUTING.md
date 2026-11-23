@@ -34,11 +34,12 @@ fonts and update their licenses in `LICENSES`.
 
 ## Build dependencies
 
-The build dependencies are pinned in `build-requirements.txt`. After changing
-`[build-system]` in `pyproject.toml`, update `build-requirements.in` and run:
+The build dependencies are pinned in `build-requirements/requirements.txt`.
+After changing `[build-system]` in `pyproject.toml`, update
+`build-requirements/requirements.in` and run this in `build-requirements`:
 
 ```sh
-uv pip compile build-requirements.in --universal --python-version 3.10 --generate-hashes --output-file build-requirements.txt
+uv pip compile requirements.in --universal --python-version 3.10 --generate-hashes --output-file requirements.txt
 ```
 
 ## Drift checks

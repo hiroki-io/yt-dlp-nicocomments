@@ -8,7 +8,7 @@ on:
       - tools/e2e.py
       - tools/font_data.py
       - hatch_build.py
-      - build-requirements.txt
+      - build-requirements/requirements.txt
       - pyproject.toml
       - uv.lock
       - .github/workflows/e2e.yml
@@ -18,7 +18,7 @@ on:
       - tools/e2e.py
       - tools/font_data.py
       - hatch_build.py
-      - build-requirements.txt
+      - build-requirements/requirements.txt
       - pyproject.toml
       - uv.lock
       - .github/workflows/e2e.yml
@@ -90,7 +90,7 @@ jobs:
           path: yt_dlp_plugins/postprocessor/_nicocomments/font_data
           key: fonts-${{ hashFiles('yt_dlp_plugins/postprocessor/_nicocomments/font_files.py') }}
       # Build the wheel from the sdist like the Release workflow, so that the job also tests the sdist.
-      - run: uv build --build-constraint build-requirements.txt --require-hashes
+      - run: uv build --build-constraint build-requirements/requirements.txt --require-hashes
       - name: Install yt-dlp and the wheel
         if: matrix.install == 'wheel'
         env:
